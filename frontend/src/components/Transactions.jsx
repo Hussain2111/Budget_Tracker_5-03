@@ -1,21 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import EmptyState from "./EmptyState";
 import {
-    Tabs,
-    Table,
-    Button,
-    Modal,
-    Form,
-    Input,
-    InputNumber,
-    DatePicker,
-    Select,
-    Tag,
-    Space,
-    message,
+    Tabs, Table, Button, Modal, Form, Input, InputNumber,
+    DatePicker, Select, Tag, Space, message,
 } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import { expenseService, incomeService } from "../services/apiService";
 import dayjs from "dayjs";
+
+const { RangePicker } = DatePicker;
 
 const EXPENSE_CATEGORIES = [
     "Food & Dining",
@@ -188,6 +181,9 @@ const TransactionTab = ({ kind, service, categories }) => {
     const [modalOpen, setModalOpen] = useState(false);
     const [editRecord, setEditRecord] = useState(null);
     const [form] = Form.useForm();
+    const [search, setSearch] = useState("");
+    const [categoryFilter, setCategoryFilter] = useState("all");
+    const [dateRange, setDateRange] = useState([null, null]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -204,6 +200,37 @@ const TransactionTab = ({ kind, service, categories }) => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    const filteredData = useMemo(() => {
+        let result = [...data];
+
+        if (search.trim()) {
+            const needle = search.trim().toLowerCase();
+            result = result.filter(r =>
+                r.name?.toLowerCase().includes(needle) ||
+                r.description?.toLowerCase().includes(needle) ||
+                r.type?.toLowerCase().includes(needle)
+            );
+        }
+
+        if (categoryFilter !== "all") {
+            result = result.filter(r => r.type === categoryFilter);
+        }
+
+        if (dateRange[0] && dateRange[1]) {
+            result = result.filter(r => {
+                const d = dayjs(r.date);
+                return d.isAfter(dateRange[0].subtract(1, "day")) &&
+                       d.isBefore(dateRange[1].add(1, "day"));
+            });
+        }
+
+        return result;
+    }, [data, search, categoryFilter, dateRange]);
+
+    const filteredTotal = useMemo(() => {
+        return filteredData.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    }, [filteredData]);
 
     const openAdd = () => {
         setEditRecord(null);
@@ -269,13 +296,87 @@ const TransactionTab = ({ kind, service, categories }) => {
                 </Button>
             </div>
 
-            <Table
-                columns={makeColumns(openEdit, handleDelete)}
-                dataSource={data.map((d) => ({ ...d, key: d.id }))}
-                loading={loading}
-                pagination={{ pageSize: 10, showSizeChanger: true }}
-                scroll={{ x: "max-content" }}
-            />
+            <div style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: 16,
+                flexWrap: "wrap",
+                alignItems: "center",
+                padding: "12px 16px",
+                background: "#fafafa",
+                borderRadius: 8,
+                border: "1px solid #f0f0f0",
+            }}>
+                <Input
+                    placeholder="Search by name, category, description..."
+                    prefix={<SearchOutlined style={{ color: "#9CA3AF" }} />}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    allowClear
+                    style={{ width: 280 }}
+                />
+                <Select
+                    value={categoryFilter}
+                    onChange={setCategoryFilter}
+                    style={{ width: 180 }}
+                    options={[
+                        { value: "all", label: "All Categories" },
+                        ...categories.map(c => ({ value: c, label: c })),
+                    ]}
+                />
+                <RangePicker
+                    value={dateRange}
+                    onChange={val => setDateRange(val || [null, null])}
+                    format="YYYY-MM-DD"
+                />
+                {(search || categoryFilter !== "all" || dateRange[0]) && (
+                    <Button
+                        size="small"
+                        onClick={() => {
+                            setSearch("");
+                            setCategoryFilter("all");
+                            setDateRange([null, null]);
+                        }}
+                    >
+                        Clear filters
+                    </Button>
+                )}
+            </div>
+
+            {filteredData.length === 0 && !loading ? (
+                <EmptyState
+                    icon="🧾"
+                    title={data.length > 0 ? "No results match your filters" : `No ${kind.toLowerCase()}s yet`}
+                    description={data.length > 0
+                        ? "Try adjusting your search or clearing the filters."
+                        : `Start tracking your ${kind.toLowerCase()}s by adding your first entry.`}
+                    action={data.length === 0 ? `+ Add ${kind}` : null}
+                    onAction={data.length === 0 ? openAdd : null}
+                />
+            ) : (
+                <Table
+                    columns={makeColumns(openEdit, handleDelete)}
+                    dataSource={filteredData.map((d) => ({ ...d, key: d.id }))}
+                    loading={loading}
+                    pagination={{ pageSize: 10, showSizeChanger: true }}
+                    scroll={{ x: "max-content" }}
+                    footer={() => (
+                        <div style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontWeight: 600,
+                            color: "#374151",
+                        }}>
+                            <span>{filteredData.length} transaction{filteredData.length !== 1 ? "s" : ""}</span>
+                            <span style={{ color: kind === "Expense" ? "#cf1322" : "#3f8600" }}>
+                                Total: ${filteredData.reduce((sum, r) =>
+                                    sum + Number(r.amount || 0), 0
+                                ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                    )}
+                />
+            )}
 
             <Modal
                 title={`${editRecord ? "Edit" : "Add"} ${kind}`}

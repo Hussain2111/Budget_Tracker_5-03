@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, Col, Row, Select, Spin, Table, message, Statistic } from 'antd';
+import EmptyState from './EmptyState';
 import {
     LineChart,
     Line as ReLine,
@@ -14,7 +15,7 @@ import {
 import dayjs from 'dayjs';
 import { dashboardService } from '../services/apiService';
 
-const MonthlyHistory = () => {
+const MonthlyHistory = ({ onNavigate }) => {
     const [months, setMonths] = useState(12);
     const [loading, setLoading] = useState(false);
     const [rows, setRows] = useState([]);
@@ -104,16 +105,32 @@ const MonthlyHistory = () => {
         };
     }, [filteredRows]);
 
+    // Calculate savings streak
+    const savingsStreak = useMemo(() => {
+        if (!filteredRows.length) return 0;
+
+        // Sort by date ascending so we can walk backwards from most recent
+        const sorted = [...filteredRows].sort((a, b) => {
+            if (a.year !== b.year) return b.year - a.year;
+            return b.month - a.month;
+        });
+
+        let streak = 0;
+        for (const row of sorted) {
+            if (Number(row.monthlySavings || 0) > 0) {
+                streak++;
+            } else {
+                break;
+            }
+        }
+        return streak;
+    }, [filteredRows]);
+
     // Handle row click to navigate to Budget page
     const handleRowClick = (record) => {
         const monthDayjs = dayjs(`${record.year}-${String(record.month).padStart(2, '0')}-01`);
-        // Store selected month in localStorage for Budget component to pick up
         localStorage.setItem('selectedMonthForBudget', monthDayjs.toISOString());
-        // Navigate to budget page by updating the active page
-        // Note: This is a temporary solution using localStorage + reload
-        // TODO: Replace with proper navigation when React Router is implemented
-        localStorage.setItem('ACTIVE_PAGE', 'budget');
-        window.location.reload();
+        onNavigate?.('budget');
     };
 
     const columns = [
@@ -155,6 +172,7 @@ const MonthlyHistory = () => {
         onRow: (record) => ({
             onClick: () => handleRowClick(record),
             style: { cursor: 'pointer' },
+            title: 'Click to view this month in detail',
         }),
     };
 
@@ -184,7 +202,7 @@ const MonthlyHistory = () => {
                 <Spin spinning={loading}>
                     {/* Summary Stats */}
                     <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                        <Col xs={24} md={8}>
+                        <Col xs={24} md={6}>
                             <Card>
                                 <Statistic 
                                     title="Average Monthly Income" 
@@ -193,7 +211,7 @@ const MonthlyHistory = () => {
                                 />
                             </Card>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col xs={24} md={6}>
                             <Card>
                                 <Statistic 
                                     title="Average Monthly Expenses" 
@@ -202,7 +220,7 @@ const MonthlyHistory = () => {
                                 />
                             </Card>
                         </Col>
-                        <Col xs={24} md={8}>
+                        <Col xs={24} md={6}>
                             <Card>
                                 {summaryStats.bestSavingsMonth ? (
                                     <Statistic
@@ -219,7 +237,72 @@ const MonthlyHistory = () => {
                                 )}
                             </Card>
                         </Col>
+                        <Col xs={24} md={6}>
+                            <Card>
+                                <div style={{ textAlign: "center", padding: "8px 0" }}>
+                                    <div style={{
+                                        fontSize: 36,
+                                        marginBottom: 4,
+                                    }}>
+                                        {savingsStreak >= 3 ? "🔥" : savingsStreak >= 1 ? "✅" : "💤"}
+                                    </div>
+                                    <div style={{
+                                        fontSize: 28,
+                                        fontWeight: 700,
+                                        color: savingsStreak >= 3 ? "#fa8c16" :
+                                               savingsStreak >= 1 ? "#52c41a" : "#d9d9d9",
+                                        lineHeight: 1,
+                                        marginBottom: 4,
+                                    }}>
+                                        {savingsStreak}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: "#8c8c8c" }}>
+                                        Month savings streak
+                                    </div>
+                                    {savingsStreak >= 3 && (
+                                        <div style={{
+                                            marginTop: 6,
+                                            fontSize: 11,
+                                            color: "#fa8c16",
+                                            fontWeight: 500,
+                                        }}>
+                                            Keep it going!
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+                        </Col>
                     </Row>
+
+                    {savingsStreak >= 1 && (
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{
+                                padding: "14px 20px",
+                                borderRadius: 8,
+                                background: savingsStreak >= 6 ? "#fff7e6" :
+                                            savingsStreak >= 3 ? "#f6ffed" : "#f0f5ff",
+                                borderLeft: `4px solid ${
+                                    savingsStreak >= 6 ? "#fa8c16" :
+                                    savingsStreak >= 3 ? "#52c41a" : "#1890ff"
+                                }`,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 12,
+                                marginBottom: 8,
+                            }}>
+                                <span style={{ fontSize: 20 }}>
+                                    {savingsStreak >= 6 ? "🏆" : savingsStreak >= 3 ? "🔥" : "✅"}
+                                </span>
+                                <span style={{ fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
+                                    {savingsStreak >= 6
+                                        ? `${savingsStreak} months of positive savings in a row. Exceptional consistency.` 
+                                        : savingsStreak >= 3
+                                        ? `${savingsStreak}-month savings streak. You're building real momentum.` 
+                                        : `You saved money last month. Keep the streak going this month.`}
+                                </span>
+                            </div>
+                        </div>
+                    )}
 
                     <Row gutter={[16, 16]}>
                         <Col xs={24}>
@@ -272,12 +355,20 @@ const MonthlyHistory = () => {
                         </Col>
 
                         <Col xs={24}>
-                            <Table
-                                columns={columns}
-                                dataSource={filteredRows.map((r) => ({ ...r, key: `${r.year}-${r.month}` }))}
-                                pagination={false}
-                                {...tableProps}
-                            />
+                           {filteredRows.length === 0 && !loading ? (
+                                <EmptyState
+                                    icon="📅"
+                                    title="No history yet"
+                                    description="Once you start logging income and expenses, your monthly history will appear here."
+                                />
+                            ) : (
+                                <Table
+                                    columns={columns}
+                                    dataSource={filteredRows.map((r) => ({ ...r, key: `${r.year}-${r.month}` }))}
+                                    pagination={false}
+                                    {...tableProps}
+                                />
+                            )}
                             {filteredRows.length < rows.length && (
                                 <div style={{ marginTop: 12, fontSize: 12, color: '#666', textAlign: 'center' }}>
                                     Showing months with activity only

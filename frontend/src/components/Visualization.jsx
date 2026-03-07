@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, Col, DatePicker, Row, Statistic, Spin, message, Divider } from 'antd';
 import { Pie, Column } from '@ant-design/plots';
+import EmptyState from './EmptyState';
 import {
     LineChart,
     Line,
@@ -128,6 +129,72 @@ const Visualization = () => {
     const savingsValue = Number(monthly?.monthlySavings ?? 0);
     const savingsColor = savingsValue < 0 ? CHART_COLORS.EXPENSES : CHART_COLORS.SAVINGS;
 
+    const narrativeInsights = useMemo(() => {
+        const insights = [];
+
+        if (!monthly) return insights;
+
+        const totalIncome = Number(monthly.totalIncome || 0);
+        const totalExpenses = Number(monthly.totalExpenses || 0);
+        const savings = Number(monthly.monthlySavings || 0);
+        const savingsRate = totalIncome > 0
+            ? Math.round((savings / totalIncome) * 100)
+            : 0;
+
+        // Savings rate insight
+        if (totalIncome > 0) {
+            if (savingsRate >= 20) {
+                insights.push({
+                    type: "success",
+                    icon: "🎯",
+                    text: `You're saving ${savingsRate}% of your income this month — that's above the recommended 20% benchmark.`,
+                });
+            } else if (savingsRate > 0) {
+                insights.push({
+                    type: "warning",
+                    icon: "📈",
+                    text: `You're saving ${savingsRate}% of your income this month. Financial advisors typically recommend aiming for 20%.`,
+                });
+            } else {
+                insights.push({
+                    type: "error",
+                    icon: "⚠️",
+                    text: `Your expenses exceed your income this month by $${formatMoney(Math.abs(savings))}. Review your spending to get back on track.`,
+                });
+            }
+        }
+
+        // Top expense category insight
+        if (expenseData.length > 0) {
+            const top = expenseData[0];
+            const topPercent = totalExpenses > 0
+                ? Math.round((Number(top.value) / totalExpenses) * 100)
+                : 0;
+            insights.push({
+                type: "info",
+                icon: "🏷️",
+                text: `${top.type} is your largest expense category at $${formatMoney(top.value)}, making up ${topPercent}% of total spending.`,
+            });
+        }
+
+        // Income diversity insight
+        if (incomeData.length > 1) {
+            insights.push({
+                type: "success",
+                icon: "💡",
+                text: `You have ${incomeData.length} income sources this month. Multiple income streams reduce financial risk.`,
+            });
+        } else if (incomeData.length === 1) {
+            insights.push({
+                type: "info",
+                icon: "💡",
+                text: `All your income comes from ${incomeData[0]?.type || "one source"}. Consider diversifying income streams over time.`,
+            });
+        }
+
+        return insights;
+    }, [monthly, expenseData, incomeData]);
+
     // Stacked bar chart data showing expenses vs savings
     const stackedBarData = useMemo(() => {
         const expenses = Number(monthly?.totalExpenses ?? 0);
@@ -138,53 +205,65 @@ const Visualization = () => {
         ];
     }, [monthly]);
 
-    const expensePieConfig = {
-        data: expenseData,
-        angleField: 'value',
-        colorField: 'type',
-        radius: 0.9,
-        legend: { position: 'bottom' },
-        label: {
-            position: 'inside',
-            formatter: (datum) => `${datum.type}\n$${formatMoney(datum.value)}`,
-        },
-        color: ({ type }) => {
-            // Use consistent colors for expense categories
-            const categoryColors = {
-                'Food': '#ff7875',
-                'Transport': '#ff9c6e',
-                'Entertainment': '#ffc53d',
-                'Utilities': '#95de64',
-                'Healthcare': '#69c0ff',
-                'Shopping': '#b37feb',
-                'Other': '#d9d9d9'
-            };
-            return categoryColors[type] || CHART_COLORS.EXPENSES;
-        },
-    };
+    const EXPENSE_COLORS = [
+    "#ff7875", "#ffa39e", "#ff9c6e", "#ffc53d",
+    "#95de64", "#69c0ff", "#b37feb", "#d9d9d9",
+];
 
-    const incomePieConfig = {
-        data: incomeData,
-        angleField: 'value',
-        colorField: 'type',
-        radius: 0.9,
-        legend: { position: 'bottom' },
-        label: {
-            position: 'inside',
-            formatter: (datum) => `${datum.type}\n$${formatMoney(datum.value)}`,
-        },
-        color: ({ type }) => {
-            // Use consistent colors for income categories
-            const categoryColors = {
-                'Salary': '#95de64',
-                'Freelance': '#b7eb8f',
-                'Investment': '#ffd666',
-                'Business': '#87d068',
-                'Other': '#d9d9d9'
-            };
-            return categoryColors[type] || CHART_COLORS.INCOME;
-        },
-    };
+const expensePieConfig = {
+    data: expenseData,
+    angleField: "value",
+    colorField: "type",
+    radius: 0.85,
+    innerRadius: 0.5,
+    color: EXPENSE_COLORS,
+    legend: { position: "bottom" },
+    label: {
+        type: "inner",
+        offset: "-30%",
+        content: ({ percent }) => `${(percent * 100).toFixed(0)}%`,
+        style: { fontSize: 12, textAlign: "center" },
+    },
+    tooltip: {
+        formatter: (datum) => ({
+            name: datum.type,
+            value: `$${formatMoney(datum.value)}`,
+        }),
+    },
+    statistic: {
+        title: { content: "Expenses" },
+    },
+};
+
+    const INCOME_COLORS = [
+    "#95de64", "#b7eb8f", "#ffd666", "#87d068",
+    "#69c0ff", "#b37feb", "#d9d9d9",
+];
+
+const incomePieConfig = {
+    data: incomeData,
+    angleField: "value",
+    colorField: "type",
+    radius: 0.85,
+    innerRadius: 0.5,
+    color: INCOME_COLORS,
+    legend: { position: "bottom" },
+    label: {
+        type: "inner",
+        offset: "-30%",
+        content: ({ percent }) => `${(percent * 100).toFixed(0)}%`,
+        style: { fontSize: 12, textAlign: "center" },
+    },
+    tooltip: {
+        formatter: (datum) => ({
+            name: datum.type,
+            value: `$${formatMoney(datum.value)}`,
+        }),
+    },
+    statistic: {
+        title: { content: "Income" },
+    },
+};
 
     // Stacked column configuration for income breakdown
     const stackedColumnConfig = {
@@ -192,7 +271,7 @@ const Visualization = () => {
         xField: 'type',
         yField: 'value',
         colorField: 'type',
-        color: ({ type }) => type === 'Expenses' ? CHART_COLORS.EXPENSES : CHART_COLORS.SAVINGS,
+        color: [CHART_COLORS.EXPENSES, CHART_COLORS.SAVINGS],
         yAxis: {
             label: {
                 formatter: (v) => `$${v}`,
@@ -252,6 +331,43 @@ const Visualization = () => {
                     </Card>
                 </Col>
 
+                {narrativeInsights.length > 0 && (
+                    <Col xs={24}>
+                        <Card title="What the numbers say" style={{ marginBottom: 8 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                {narrativeInsights.map((insight, i) => (
+                                    <div
+                                        key={i}
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "flex-start",
+                                            gap: 12,
+                                            padding: "12px 16px",
+                                            borderRadius: 8,
+                                            background:
+                                                insight.type === "success" ? "#f6ffed" :
+                                                insight.type === "warning" ? "#fffbe6" :
+                                                insight.type === "error" ? "#fff2f0" :
+                                                "#f0f5ff",
+                                            borderLeft: `3px solid ${
+                                                insight.type === "success" ? "#52c41a" :
+                                                insight.type === "warning" ? "#faad14" :
+                                                insight.type === "error" ? "#ff4d4f" :
+                                                "#1890ff"
+                                            }`,
+                                        }}
+                                    >
+                                        <span style={{ fontSize: 18, flexShrink: 0 }}>{insight.icon}</span>
+                                        <span style={{ fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
+                                            {insight.text}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    </Col>
+                )}
+
                 <Col xs={24}>
                     <Card title={`Income Breakdown (${selectedMonth.format('MMM YYYY')})`}>
                         <Spin spinning={loadingMonthly}>
@@ -263,7 +379,13 @@ const Visualization = () => {
                 <Col xs={24} md={12}>
                     <Card title={`Expenses by Category (${selectedMonth.format('MMM YYYY')})`}>
                         <Spin spinning={loading}>
-                            {expenseData.length ? <Pie {...expensePieConfig} /> : 'No expense data for this month'}
+                            {expenseData.length ? <Pie {...expensePieConfig} /> : (
+                                <EmptyState
+                                    icon="📊"
+                                    title="No expenses this month"
+                                    description="Add some expenses in the Transactions tab and they'll appear here."
+                                />
+                            )}
                         </Spin>
                     </Card>
                 </Col>
@@ -271,7 +393,13 @@ const Visualization = () => {
                 <Col xs={24} md={12}>
                     <Card title={`Income by Category (${selectedMonth.format('MMM YYYY')})`}>
                         <Spin spinning={loading}>
-                            {incomeData.length ? <Pie {...incomePieConfig} /> : 'No income data for this month'}
+                            {incomeData.length ? <Pie {...incomePieConfig} /> : (
+                                <EmptyState
+                                    icon="💵"
+                                    title="No income this month"
+                                    description="Add income entries in the Transactions tab to see your breakdown here."
+                                />
+                            )}
                         </Spin>
                     </Card>
                 </Col>

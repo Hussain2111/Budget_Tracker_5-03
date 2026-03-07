@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, DatePicker, Form, Input, InputNumber, Modal, Table, message, Progress, Card } from 'antd';
+import { Button, DatePicker, Form, Input, InputNumber, Modal, Table, message, Progress, Card, Spin } from 'antd';
 import dayjs from 'dayjs';
 import { savingsService } from '../services/apiService';
 
@@ -31,6 +31,10 @@ const Savings = () => {
     const [contributeForm] = Form.useForm();
     const [contributingGoal, setContributingGoal] = useState(null);
     const [contributing, setContributing] = useState(false);
+
+    const [historyGoal, setHistoryGoal] = useState(null);
+    const [contributions, setContributions] = useState([]);
+    const [loadingContributions, setLoadingContributions] = useState(false);
 
     const fetchGoals = async () => {
         setLoading(true);
@@ -139,6 +143,19 @@ const Savings = () => {
         }
     };
 
+    const handleViewHistory = async (record) => {
+        setHistoryGoal(record);
+        setLoadingContributions(true);
+        try {
+            const res = await savingsService.getContributions(record.id);
+            setContributions(res.data || []);
+        } catch {
+            message.error('Failed to load contribution history');
+        } finally {
+            setLoadingContributions(false);
+        }
+    };
+
     const formatMoney = (value) => {
         const num = Number(value || 0);
         return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -209,6 +226,9 @@ const Savings = () => {
                     <Button type="primary" size="small" onClick={() => handleOpenContributeModal(record)}>
                         Contribute
                     </Button>
+                    <Button type="default" size="small" onClick={() => handleViewHistory(record)}>
+                        History
+                    </Button>
                     <Button type="default" size="small" onClick={() => handleEdit(record)}>
                         Edit
                     </Button>
@@ -264,12 +284,23 @@ const Savings = () => {
                 </Button>
             </div>
 
-            <Table
-                columns={columns}
-                dataSource={goals.map((g) => ({ ...g, key: g.id }))}
-                loading={loading}
-                pagination={{ pageSize: 10 }}
-            />
+            {goals.length === 0 && !loading ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>🏦</div>
+                    <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No savings goals yet</div>
+                    <div style={{ color: '#999', marginBottom: 24 }}>
+                        Set a goal — a holiday, an emergency fund, a new laptop — and track your progress toward it.
+                    </div>
+                    <Button type="primary" onClick={handleAdd}>+ Add Savings Goal</Button>
+                </div>
+            ) : (
+                <Table
+                    columns={columns}
+                    dataSource={goals.map((g) => ({ ...g, key: g.id }))}
+                    loading={loading}
+                    pagination={{ pageSize: 10 }}
+                />
+            )}
 
             <Modal
                 title={isEditMode ? 'Edit Savings Goal' : 'Add Savings Goal'}
@@ -341,6 +372,84 @@ const Savings = () => {
                         <Input.TextArea rows={2} placeholder="e.g., Monthly contribution" />
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            <Modal
+                title={`Contribution History — ${historyGoal?.name || ''}`}
+                open={!!historyGoal}
+                onCancel={() => { setHistoryGoal(null); setContributions([]); }}
+                footer={null}
+                width={600}
+            >
+                <Spin spinning={loadingContributions}>
+                    {contributions.length === 0 && !loadingContributions ? (
+                        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                            <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
+                            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No contributions yet</div>
+                            <div style={{ color: '#999' }}>
+                                Use the Contribute button to start building toward this goal.
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div style={{
+                                marginBottom: 16,
+                                padding: "12px 16px",
+                                background: "#f6ffed",
+                                borderRadius: 8,
+                                display: "flex",
+                                justifyContent: "space-between",
+                            }}>
+                                <span style={{ color: "#52c41a", fontWeight: 600 }}>
+                                    Total contributed
+                                </span>
+                                <span style={{ color: "#52c41a", fontWeight: 700 }}>
+                                    ${contributions
+                                        .reduce((sum, c) => sum + Number(c.amount), 0)
+                                        .toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        })}
+                                </span>
+                            </div>
+                            <Table
+                                size="small"
+                                pagination={{ pageSize: 8 }}
+                                dataSource={contributions.map(c => ({ ...c, key: c.id }))}
+                                columns={[
+                                    {
+                                        title: "Date",
+                                        dataIndex: "date",
+                                        key: "date",
+                                        render: d => dayjs(d).format("MMM D, YYYY"),
+                                    },
+                                    {
+                                        title: "Amount",
+                                        dataIndex: "amount",
+                                        key: "amount",
+                                        align: "right",
+                                        render: amt => (
+                                            <span style={{ color: "#52c41a", fontWeight: 600 }}>
+                                                +${Number(amt).toLocaleString(undefined, {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2,
+                                                })}
+                                            </span>
+                                        ),
+                                    },
+                                    {
+                                        title: "Note",
+                                        dataIndex: "note",
+                                        key: "note",
+                                        render: note => note || (
+                                            <span style={{ color: "#d9d9d9" }}>—</span>
+                                        ),
+                                    },
+                                ]}
+                            />
+                        </>
+                    )}
+                </Spin>
             </Modal>
         </div>
     );
