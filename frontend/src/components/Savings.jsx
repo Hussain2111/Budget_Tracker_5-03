@@ -1,9 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, DatePicker, Form, Input, InputNumber, Modal, Table, message, Progress, Card } from 'antd';
 import dayjs from 'dayjs';
-import { savingsService, ledgerService } from '../services/apiService';
+import { savingsService } from '../services/apiService';
 
-const { RangePicker } = DatePicker;
+function classifyGoal(goal) {
+    const target = Number(goal.targetAmount || 0);
+    const current = Number(goal.currentAmount || 0);
+    const percent = target > 0 ? (current / target) * 100 : 0;
+    const deadlineDate = dayjs(goal.deadline);
+    const monthsRemaining = deadlineDate.diff(dayjs(), 'month', true);
+    const totalMonths = deadlineDate.diff(dayjs(goal.createdAt), 'month', true);
+    const elapsedMonths = totalMonths - monthsRemaining;
+    const expectedPercent = totalMonths > 0 ? (elapsedMonths / totalMonths) * 100 : 0;
+    const isOverdue = monthsRemaining <= 0 && percent < 100;
+    const isAtRisk = !isOverdue && percent < expectedPercent * 0.8;
+    const isComplete = percent >= 100;
+    return { percent, monthsRemaining, isOverdue, isAtRisk, isComplete, expectedPercent };
+}
 
 const Savings = () => {
     const [goals, setGoals] = useState([]);
@@ -14,16 +27,10 @@ const Savings = () => {
     const [selectedGoal, setSelectedGoal] = useState(null);
     const [form] = Form.useForm();
 
-    const defaultRange = useMemo(() => {
-        const start = dayjs().startOf('month');
-        const end = dayjs().endOf('month');
-        return [start, end];
-    }, []);
-
-    const [selectedRange, setSelectedRange] = useState(defaultRange);
-
-    const [periodSavings, setPeriodSavings] = useState(0);
-    const [loadingPeriod, setLoadingPeriod] = useState(false);
+    const [isContributeModalVisible, setIsContributeModalVisible] = useState(false);
+    const [contributeForm] = Form.useForm();
+    const [contributingGoal, setContributingGoal] = useState(null);
+    const [contributing, setContributing] = useState(false);
 
     const fetchGoals = async () => {
         setLoading(true);
@@ -38,37 +45,8 @@ const Savings = () => {
         }
     };
 
-    const fetchPeriodSavings = async (range) => {
-        setLoadingPeriod(true);
-        try {
-            const [start, end] = range;
-            const startDate = start.format('YYYY-MM-DD');
-            const endDate = end.format('YYYY-MM-DD');
-
-            const res = await ledgerService.getAll({
-                startDate,
-                endDate,
-                sort: 'date',
-                order: 'DESC',
-            });
-
-            const rows = res.data || [];
-            const savings = rows.reduce((sum, r) => sum + Number(r.amount || 0), 0);
-
-            setPeriodSavings(Number(savings));
-        } catch (e) {
-            message.error('Failed to calculate savings for the selected period');
-            console.error(e);
-            setPeriodSavings(0);
-        } finally {
-            setLoadingPeriod(false);
-        }
-    };
-
     useEffect(() => {
         fetchGoals();
-        fetchPeriodSavings(selectedRange);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleAdd = () => {
@@ -134,6 +112,33 @@ const Savings = () => {
         }
     };
 
+    const handleOpenContributeModal = (record) => {
+        setContributingGoal(record);
+        contributeForm.resetFields();
+        setIsContributeModalVisible(true);
+    };
+
+    const handleContribute = async (values) => {
+        if (!contributingGoal) return;
+
+        setContributing(true);
+        try {
+            await savingsService.contribute(contributingGoal.id, {
+                amount: values.amount,
+                note: values.note,
+            });
+            message.success('Contribution saved!');
+            setIsContributeModalVisible(false);
+            contributeForm.resetFields();
+            fetchGoals();
+        } catch (e) {
+            message.error('Failed to save contribution');
+            console.error(e);
+        } finally {
+            setContributing(false);
+        }
+    };
+
     const formatMoney = (value) => {
         const num = Number(value || 0);
         return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -145,7 +150,7 @@ const Savings = () => {
             title: 'Target Amount',
             dataIndex: 'targetAmount',
             key: 'targetAmount',
-            render: (v) => `$${Number(v || 0).toFixed(2)}`,
+            render: (v) => `$${formatMoney(v)}`,
         },
         {
             title: 'Deadline',
@@ -154,24 +159,43 @@ const Savings = () => {
             render: (d) => (d ? dayjs(d).format('YYYY-MM-DD') : ''),
         },
         {
-            title: `Progress (Selected Period)`,
+            title: 'Progress',
             key: 'progress',
             render: (_, record) => {
+                const { percent, monthsRemaining, isOverdue, isAtRisk, isComplete, expectedPercent } = classifyGoal(record);
                 const target = Number(record.targetAmount || 0);
-                const current = Math.max(0, Number(periodSavings || 0));
-                const percent = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+                const current = Number(record.currentAmount || 0);
+                const amountRemaining = Math.max(0, target - current);
+                const monthlyNeeded = monthsRemaining > 0 ? amountRemaining / monthsRemaining : 0;
+
+                const strokeColor = isOverdue ? '#ff4d4f' : isAtRisk ? '#faad14' : '#52c41a';
+                const statusLabel = isOverdue ? '⚠ Overdue' : isAtRisk ? '⚠ At Risk' : '✓ On Track';
+                const labelColor = isOverdue ? '#ff4d4f' : isAtRisk ? '#faad14' : '#52c41a';
 
                 return (
                     <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                             <span>Saved: ${formatMoney(current)}</span>
                             <span>Target: ${formatMoney(target)}</span>
                         </div>
                         <Progress
                             percent={Number(percent.toFixed(0))}
                             size="small"
-                            status={percent >= 100 ? 'success' : 'active'}
+                            strokeColor={strokeColor}
                         />
+                        <div style={{ marginTop: 8, fontSize: 12, color: labelColor, fontWeight: 600 }}>
+                            {statusLabel}
+                        </div>
+                        {!isComplete && monthsRemaining > 0 && (
+                            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+                                Monthly target: ${formatMoney(monthlyNeeded)}
+                            </div>
+                        )}
+                        {isComplete && (
+                            <div style={{ marginTop: 8, fontSize: 12, color: '#52c41a', fontWeight: 600 }}>
+                                Goal complete! 🎉
+                            </div>
+                        )}
                     </div>
                 );
             },
@@ -182,7 +206,10 @@ const Savings = () => {
             key: 'actions',
             render: (_, record) => (
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <Button type="primary" size="small" onClick={() => handleEdit(record)}>
+                    <Button type="primary" size="small" onClick={() => handleOpenContributeModal(record)}>
+                        Contribute
+                    </Button>
+                    <Button type="default" size="small" onClick={() => handleEdit(record)}>
                         Edit
                     </Button>
                     <Button danger size="small" onClick={() => handleDelete(record.id)}>
@@ -196,26 +223,39 @@ const Savings = () => {
     return (
         <div style={{ padding: 20 }}>
             <Card style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
-                    <div style={{ fontWeight: 600 }}>
-                        Calculated Savings for Period
+                {(() => {
+                    const totalSaved = goals.reduce((sum, g) => sum + Number(g.currentAmount || 0), 0);
+                    const totalTarget = goals.reduce((sum, g) => sum + Number(g.targetAmount || 0), 0);
+                    const onTrackCount = goals.filter(g => {
+                        const { isOverdue, isAtRisk, isComplete } = classifyGoal(g);
+                        return !isOverdue && !isAtRisk && !isComplete;
+                    }).length;
+                    const atRiskCount = goals.filter(g => {
+                        const { isOverdue, isAtRisk } = classifyGoal(g);
+                        return isOverdue || isAtRisk;
+                    }).length;
 
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                        <RangePicker
-                            value={selectedRange}
-                            onChange={(val) => {
-                                if (!val) return;
-                                setSelectedRange(val);
-                                fetchPeriodSavings(val);
-                            }}
-                        />
-                        <div style={{ minWidth: 220, textAlign: 'right' }}>
-                            {loadingPeriod ? 'Loading...' : `Saved: $${formatMoney(Math.max(0, periodSavings))}`}
+                    return (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                            <div>
+                                <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>Total Saved</div>
+                                <div style={{ fontSize: 20, fontWeight: 600 }}>${formatMoney(totalSaved)}</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>Total Target</div>
+                                <div style={{ fontSize: 20, fontWeight: 600 }}>${formatMoney(totalTarget)}</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>On Track</div>
+                                <div style={{ fontSize: 20, fontWeight: 600, color: '#52c41a' }}>{onTrackCount} goals</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>At Risk</div>
+                                <div style={{ fontSize: 20, fontWeight: 600, color: atRiskCount > 0 ? '#faad14' : '#999' }}>{atRiskCount} goals</div>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    );
+                })()}
             </Card>
 
             <div style={{ marginBottom: 16 }}>
@@ -264,6 +304,41 @@ const Savings = () => {
 
                     <Form.Item label="Description" name="description">
                         <Input.TextArea rows={3} placeholder="Optional description" />
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={`Contribute to ${contributingGoal?.name || ''}`}
+                open={isContributeModalVisible}
+                onOk={() => contributeForm.submit()}
+                onCancel={() => setIsContributeModalVisible(false)}
+                okText="Contribute"
+                confirmLoading={contributing}
+            >
+                {contributingGoal && (
+                    <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <span>Current:</span>
+                            <span style={{ fontWeight: 600 }}>${formatMoney(contributingGoal.currentAmount || 0)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Target:</span>
+                            <span style={{ fontWeight: 600 }}>${formatMoney(contributingGoal.targetAmount || 0)}</span>
+                        </div>
+                    </div>
+                )}
+                <Form form={contributeForm} layout="vertical" onFinish={handleContribute} style={{ marginTop: 16 }}>
+                    <Form.Item
+                        label="Contribution Amount"
+                        name="amount"
+                        rules={[{ required: true, message: 'Please enter an amount' }]}
+                    >
+                        <InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix="$" />
+                    </Form.Item>
+
+                    <Form.Item label="Note (optional)" name="note">
+                        <Input.TextArea rows={2} placeholder="e.g., Monthly contribution" />
                     </Form.Item>
                 </Form>
             </Modal>

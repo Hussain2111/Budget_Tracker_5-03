@@ -11,6 +11,7 @@ import {
 import { SavingsService } from "./savings.service";
 import { CreateSavingDto } from "./dto/create-saving.dto";
 import { UpdateSavingDto } from "./dto/update-saving.dto";
+import { ContributeSavingDto } from "./dto/contribute-saving.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/decorators/current-user.decorator";
 
@@ -46,5 +47,14 @@ export class SavingsController {
   @Delete(":id")
   remove(@Param("id") id: string, @CurrentUser() user: AuthUser) {
     return this.savingsService.remove(id, user.id);
+  }
+
+  @Post(":id/contribute")
+  contribute(
+      @Param("id") id: string,
+      @Body() contributeSavingDto: ContributeSavingDto,
+      @CurrentUser() user: AuthUser,
+  ) {
+    return this.savingsService.contribute(id, contributeSavingDto, user.id);
   }
 }

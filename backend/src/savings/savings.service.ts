@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateSavingDto } from './dto/create-saving.dto';
 import { UpdateSavingDto } from './dto/update-saving.dto';
+import { ContributeSavingDto } from './dto/contribute-saving.dto';
 import { Saving } from './entities/saving.entity';
 
 @Injectable()
@@ -54,5 +55,22 @@ export class SavingsService {
   async remove(id: string, userId: string) {
     const saving = await this.findOne(id, userId);
     return await this.savingRepository.remove(saving);
+  }
+
+  async contribute(id: string, contributeSavingDto: ContributeSavingDto, userId: string) {
+    const saving = await this.findOne(id, userId);
+
+    if (contributeSavingDto.amount <= 0) {
+      throw new BadRequestException('Contribution amount must be greater than 0');
+    }
+
+    // Calculate new amount
+    const newAmount = parseFloat(saving.currentAmount.toString()) + contributeSavingDto.amount;
+
+    // Cap at targetAmount if contribution would exceed it
+    const cappedAmount = Math.min(newAmount, parseFloat(saving.targetAmount.toString()));
+
+    saving.currentAmount = cappedAmount;
+    return await this.savingRepository.save(saving);
   }
 }
