@@ -57,4 +57,12 @@ export class SavingsController {
   ) {
     return this.savingsService.contribute(id, contributeSavingDto, user.id);
   }
+
+  @Get(":id/contributions")
+  getContributions(
+      @Param("id") id: string,
+      @CurrentUser() user: AuthUser,
+  ) {
+    return this.savingsService.getContributions(id, user.id);
+  }
 }

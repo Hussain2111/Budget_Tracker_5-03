@@ -5,12 +5,15 @@ import { CreateSavingDto } from './dto/create-saving.dto';
 import { UpdateSavingDto } from './dto/update-saving.dto';
 import { ContributeSavingDto } from './dto/contribute-saving.dto';
 import { Saving } from './entities/saving.entity';
+import { Contribution } from './entities/contribution.entity';
 
 @Injectable()
 export class SavingsService {
   constructor(
     @InjectRepository(Saving)
     private readonly savingRepository: Repository<Saving>,
+    @InjectRepository(Contribution)
+    private readonly contributionRepository: Repository<Contribution>,
   ) {}
 
   async create(createSavingDto: CreateSavingDto, userId: string) {
@@ -64,13 +67,34 @@ export class SavingsService {
       throw new BadRequestException('Contribution amount must be greater than 0');
     }
 
-    // Calculate new amount
     const newAmount = parseFloat(saving.currentAmount.toString()) + contributeSavingDto.amount;
-
-    // Cap at targetAmount if contribution would exceed it
     const cappedAmount = Math.min(newAmount, parseFloat(saving.targetAmount.toString()));
 
     saving.currentAmount = cappedAmount;
-    return await this.savingRepository.save(saving);
+    await this.savingRepository.save(saving);
+
+    // Record the contribution separately
+    const contribution = this.contributionRepository.create({
+      savingId: id,
+      userId,
+      amount: contributeSavingDto.amount,
+      note: contributeSavingDto.note,
+      date: contributeSavingDto.date
+        ? contributeSavingDto.date.toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0],
+    });
+
+    await this.contributionRepository.save(contribution);
+
+    return saving;
+  }
+
+  async getContributions(id: string, userId: string) {
+    await this.findOne(id, userId); // verifies ownership
+
+    return this.contributionRepository.find({
+      where: { savingId: id, userId },
+      order: { createdAt: 'DESC' },
+    });
   }
 }

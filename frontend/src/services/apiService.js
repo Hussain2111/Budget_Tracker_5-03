@@ -82,6 +82,7 @@ export const savingsService = {
   update: (id, data) => api.patch(`/savings/${id}`, data),
   delete: (id) => api.delete(`/savings/${id}`),
   contribute: (id, data) => api.post(`/savings/${id}/contribute`, data),
+  getContributions: (id) => api.get(`/savings/${id}/contributions`),
 };
 
 export const budgetService = {

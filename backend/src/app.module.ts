@@ -13,6 +13,9 @@ import { Expense } from './expenses/entities/expense.entity';
 import { Income } from './income/entities/income.entity';
 import { SavingsModule } from './savings/savings.module';
 import { Saving } from './savings/entities/saving.entity';
+import { Contribution } from './savings/entities/contribution.entity';
+import { BudgetModule } from './budget/budget.module';
+import { Budget } from './budget/entities/budget.entity';
 
 @Module({
   imports: [
@@ -23,7 +26,7 @@ import { Saving } from './savings/entities/saving.entity';
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'budgettracker',
-      entities: [User, Expense, Income, Saving],
+      entities: [User, Expense, Income, Saving, Contribution, Budget],
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.NODE_ENV === 'development',
     }),
@@ -33,6 +36,7 @@ import { Saving } from './savings/entities/saving.entity';
     SavingsModule,
     DashboardModule,
     LedgerModule,
+    BudgetModule,
   ],
   controllers: [AppController],
   providers: [AppService],
