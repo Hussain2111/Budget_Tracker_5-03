@@ -31,14 +31,24 @@ const NAVIGATION_ITEMS = [
   { key: "summary", icon: <HistoryOutlined />, label: "Summary" },
 ];
 
-const MAP = {
-  dashboard: <Dashboard />,
-  transactions: <Transactions />,
-  savings: <Savings />,
-  budget: <Budget />,
-  visualization: <Visualization />,
-  summary: <MonthlyHistory />,
-}
+const getComponent = (key, onNavigate) => {
+  switch (key) {
+    case "dashboard":
+      return <Dashboard onNavigate={onNavigate} />;
+    case "transactions":
+      return <Transactions />;
+    case "savings":
+      return <Savings />;
+    case "budget":
+      return <Budget />;
+    case "visualization":
+      return <Visualization />;
+    case "summary":
+      return <MonthlyHistory onNavigate={onNavigate} />;
+    default:
+      return <Dashboard onNavigate={onNavigate} />;
+  }
+};
 function App() {
   const ACTIVE_PAGE = "active_page";
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -47,7 +57,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState("login");
   const [activePage, setActivePage] = useState(() => {
     const activePage = localStorage.getItem("ACTIVE_PAGE");
-    return activePage && MAP[activePage] ? activePage : "dashboard";
+    return activePage && ["dashboard", "transactions", "budget", "savings", "visualization", "summary"].includes(activePage) ? activePage : "dashboard";
   });
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -62,7 +72,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (isAuthenticated && activePage && MAP[activePage]) {
+    if (isAuthenticated && activePage && ["dashboard", "transactions", "budget", "savings", "visualization", "summary"].includes(activePage)) {
       localStorage.setItem(ACTIVE_PAGE, activePage);
     }
   }, [activePage, isAuthenticated]);
@@ -95,7 +105,7 @@ function App() {
         setCurrentPage("app");
 
         const activePage = localStorage.getItem("ACTIVE_PAGE");
-        if (activePage && MAP[activePage]) {
+        if (activePage && ["dashboard", "transactions", "budget", "savings", "visualization", "summary"].includes(activePage)) {
           setActivePage(activePage);
         }
       } catch (e) {
@@ -114,8 +124,8 @@ function App() {
     setIsAuthenticated(true);
     setCurrentPage("app");
 
-    const activePage = localStorage.getItem("active_page");
-    if (activePage && MAP[activePage]) {
+    const activePage = localStorage.getItem("ACTIVE_PAGE");
+    if (activePage && ["dashboard", "transactions", "budget", "savings", "visualization", "summary"].includes(activePage)) {
       setActivePage(activePage);
     }
     else {
@@ -128,8 +138,8 @@ function App() {
     setIsAuthenticated(true);
     setCurrentPage("app");
 
-    const activePage = localStorage.getItem("active_page");
-    if (activePage && MAP[activePage]) {
+    const activePage = localStorage.getItem("ACTIVE_PAGE");
+    if (activePage && ["dashboard", "transactions", "budget", "savings", "visualization", "summary"].includes(activePage)) {
       setActivePage(activePage);
     }
     else {
@@ -162,6 +172,11 @@ function App() {
     );
   }
 
+  // Navigation handler for components
+  const handleNavigate = (page) => {
+    setActivePage(page);
+  };
+
   return (
     <div className="app-layout">
       {/* Sidebar */}
@@ -190,28 +205,33 @@ function App() {
           <div className="avatar">
             {user?.username ? user.username.substring(0, 2).toUpperCase() : "JS"}
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <div className="sidebar-user-name">{user?.username || "Jamie S."}</div>
             <div className="sidebar-user-plan">Personal</div>
+          </div>
+          <div
+              onClick={handleLogout}
+              title="Log out"
+              style={{
+                  cursor: "pointer",
+                  color: "rgba(255,255,255,0.35)",
+                  fontSize: 16,
+                  flexShrink: 0,
+                  transition: "color 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.8)"}
+              onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.35)"}
+          >
+              ⎋
           </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="main">
-        <div className="topbar">
-          <span className="topbar-title">{NAVIGATION_ITEMS.find(item => item.key === activePage)?.label || "Dashboard"}</span>
-          <div className="topbar-right">
-            <div className="month-select">
-              <CalendarOutlined />
-              March 2026
-              <DownOutlined />
-            </div>
-            <button className="btn-primary-sm">+ Add Transaction</button>
-          </div>
-        </div>
+
         <div className="page-content">
-          {MAP[activePage]}
+          {getComponent(activePage, handleNavigate)}
         </div>
       </div>
     </div>
