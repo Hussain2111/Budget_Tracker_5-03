@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Col, Row, Select, Spin, Table, message } from 'antd';
+import { Card, Col, Row, Select, Spin, Table, message, Statistic } from 'antd';
 import {
     LineChart,
     Line as ReLine,
@@ -8,6 +8,8 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
+    ReferenceLine,
+    ReferenceDot,
 } from 'recharts';
 import dayjs from 'dayjs';
 import { dashboardService } from '../services/apiService';
@@ -49,9 +51,70 @@ const MonthlyHistory = () => {
                 Income: Number(r.totalIncome || 0),
                 Expenses: Number(r.totalExpenses || 0),
                 Savings: Number(r.monthlySavings || 0),
+                year: r.year,
+                monthNum: r.month,
             };
         });
     }, [rows]);
+
+    // Filter out empty months for table display
+    const filteredRows = useMemo(() => {
+        return (rows || []).filter(r => 
+            Number(r.totalIncome || 0) !== 0 || Number(r.totalExpenses || 0) !== 0
+        );
+    }, [rows]);
+
+    // Calculate summary stats
+    const summaryStats = useMemo(() => {
+        if (!filteredRows.length) {
+            return {
+                avgIncome: 0,
+                avgExpenses: 0,
+                bestSavingsMonth: null,
+                bestSavingsAmount: 0,
+                firstTransactionMonth: null,
+            };
+        }
+
+        const totalIncome = filteredRows.reduce((sum, r) => sum + Number(r.totalIncome || 0), 0);
+        const totalExpenses = filteredRows.reduce((sum, r) => sum + Number(r.totalExpenses || 0), 0);
+        const avgIncome = totalIncome / filteredRows.length;
+        const avgExpenses = totalExpenses / filteredRows.length;
+
+        // Find best savings month
+        const bestMonth = filteredRows.reduce((best, current) => {
+            const currentSavings = Number(current.monthlySavings || 0);
+            const bestSavings = Number(best.monthlySavings || 0);
+            return currentSavings > bestSavings ? current : best;
+        });
+
+        // Find first transaction month
+        const firstTransaction = filteredRows.reduce((first, current) => {
+            const currentDate = dayjs(`${current.year}-${String(current.month).padStart(2, '0')}-01`);
+            const firstDate = dayjs(`${first.year}-${String(first.month).padStart(2, '0')}-01`);
+            return currentDate.isBefore(firstDate) ? current : first;
+        });
+
+        return {
+            avgIncome,
+            avgExpenses,
+            bestSavingsMonth: bestMonth,
+            bestSavingsAmount: Number(bestMonth.monthlySavings || 0),
+            firstTransactionMonth: firstTransaction,
+        };
+    }, [filteredRows]);
+
+    // Handle row click to navigate to Budget page
+    const handleRowClick = (record) => {
+        const monthDayjs = dayjs(`${record.year}-${String(record.month).padStart(2, '0')}-01`);
+        // Store selected month in localStorage for Budget component to pick up
+        localStorage.setItem('selectedMonthForBudget', monthDayjs.toISOString());
+        // Navigate to budget page by updating the active page
+        // Note: This is a temporary solution using localStorage + reload
+        // TODO: Replace with proper navigation when React Router is implemented
+        localStorage.setItem('ACTIVE_PAGE', 'budget');
+        window.location.reload();
+    };
 
     const columns = [
         {
@@ -87,6 +150,14 @@ const MonthlyHistory = () => {
         },
     ];
 
+    // Table props for clickable rows
+    const tableProps = {
+        onRow: (record) => ({
+            onClick: () => handleRowClick(record),
+            style: { cursor: 'pointer' },
+        }),
+    };
+
     return (
         <div style={{ padding: 20 }}>
             <Card
@@ -111,6 +182,45 @@ const MonthlyHistory = () => {
                 }
             >
                 <Spin spinning={loading}>
+                    {/* Summary Stats */}
+                    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                        <Col xs={24} md={8}>
+                            <Card>
+                                <Statistic 
+                                    title="Average Monthly Income" 
+                                    value={formatMoney(summaryStats.avgIncome)} 
+                                    prefix="$" 
+                                />
+                            </Card>
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <Card>
+                                <Statistic 
+                                    title="Average Monthly Expenses" 
+                                    value={formatMoney(summaryStats.avgExpenses)} 
+                                    prefix="$" 
+                                />
+                            </Card>
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <Card>
+                                {summaryStats.bestSavingsMonth ? (
+                                    <Statistic
+                                        title={`Best Savings Month — ${dayjs(`${summaryStats.bestSavingsMonth.year}-${String(summaryStats.bestSavingsMonth.month).padStart(2, '0')}-01`).format('MMM YYYY')}`}
+                                        value={formatMoney(summaryStats.bestSavingsAmount)}
+                                        prefix="$"
+                                    />
+                                ) : (
+                                    <Statistic
+                                        title="Best Savings Month"
+                                        value="-"
+                                        prefix="$"
+                                    />
+                                )}
+                            </Card>
+                        </Col>
+                    </Row>
+
                     <Row gutter={[16, 16]}>
                         <Col xs={24}>
                             <ResponsiveContainer width="100%" height={300}>
@@ -119,6 +229,26 @@ const MonthlyHistory = () => {
                                     <YAxis tickFormatter={(v) => `$${v}`} />
                                     <Tooltip formatter={(value, name) => [`$${formatMoney(value)}`, name]} />
                                     <Legend verticalAlign="bottom" height={36} />
+                                    
+                                    {/* First transaction annotation */}
+                                    {summaryStats.firstTransactionMonth && (() => {
+                                        const firstMonthLabel = dayjs(`${summaryStats.firstTransactionMonth.year}-${String(summaryStats.firstTransactionMonth.month).padStart(2, '0')}-01`).format('MMM YYYY');
+                                        const firstMonthIndex = chartData.findIndex(d => d.month === firstMonthLabel);
+                                        if (firstMonthIndex >= 0) {
+                                            return (
+                                                <ReferenceDot
+                                                    x={firstMonthLabel}
+                                                    y={chartData[firstMonthIndex].Income}
+                                                    r={6}
+                                                    fill="#1890ff"
+                                                    stroke="#1890ff"
+                                                    label={{ value: 'Started tracking', position: 'top', fontSize: 12, fill: '#1890ff' }}
+                                                />
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+                                    
                                     <ReLine
                                         type="monotone"
                                         dataKey="Income"
@@ -144,9 +274,15 @@ const MonthlyHistory = () => {
                         <Col xs={24}>
                             <Table
                                 columns={columns}
-                                dataSource={(rows || []).map((r) => ({ ...r, key: `${r.year}-${r.month}` }))}
+                                dataSource={filteredRows.map((r) => ({ ...r, key: `${r.year}-${r.month}` }))}
                                 pagination={false}
+                                {...tableProps}
                             />
+                            {filteredRows.length < rows.length && (
+                                <div style={{ marginTop: 12, fontSize: 12, color: '#666', textAlign: 'center' }}>
+                                    Showing months with activity only
+                                </div>
+                            )}
                         </Col>
                     </Row>
                 </Spin>

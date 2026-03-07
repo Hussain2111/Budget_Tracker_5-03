@@ -83,3 +83,11 @@ export const savingsService = {
   delete: (id) => api.delete(`/savings/${id}`),
   contribute: (id, data) => api.post(`/savings/${id}/contribute`, data),
 };
+
+export const budgetService = {
+  getAll: (month, year) => api.get('/budgets', { params: { month, year } }),
+  create: (data) => api.post('/budgets', data),
+  update: (id, data) => api.patch(`/budgets/${id}`, data),
+  delete: (id) => api.delete(`/budgets/${id}`),
+  upsert: (data) => api.post('/budgets/upsert', data),
+};

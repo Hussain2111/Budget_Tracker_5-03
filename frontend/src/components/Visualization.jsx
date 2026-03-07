@@ -1,8 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, Col, DatePicker, Row, Statistic, Spin, message, Divider } from 'antd';
 import { Pie, Column } from '@ant-design/plots';
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+} from 'recharts';
 import dayjs from 'dayjs';
 import { dashboardService } from '../services/apiService';
+
+// Consistent color constants across the app
+const CHART_COLORS = {
+    INCOME: '#52c41a', // green
+    EXPENSES: '#ff4d4f', // red
+    SAVINGS: '#1890ff', // blue
+};
 
 const Visualization = () => {
     const currentMonth = useMemo(() => dayjs(), []);
@@ -10,19 +26,34 @@ const Visualization = () => {
 
     const [loading, setLoading] = useState(false);
     const [loadingMonthly, setLoadingMonthly] = useState(false);
+    const [loadingTrend, setLoadingTrend] = useState(false);
 
     const [expenseData, setExpenseData] = useState([]);
     const [incomeData, setIncomeData] = useState([]);
 
     const [monthly, setMonthly] = useState(null);
+    const [trendData, setTrendData] = useState([]);
 
-    const fetchCategoryData = async () => {
+    const fetchCategoryData = async (monthDayjs = null) => {
         setLoading(true);
         try {
-            const [expRes, incRes] = await Promise.all([
-                dashboardService.expensesByCategory(),
-                dashboardService.incomeByCategory(),
-            ]);
+            let expRes, incRes;
+            
+            if (monthDayjs) {
+                // Fetch data for specific month
+                const month = monthDayjs.month() + 1;
+                const year = monthDayjs.year();
+                [expRes, incRes] = await Promise.all([
+                    dashboardService.expensesByCategory({ month, year }),
+                    dashboardService.incomeByCategory({ month, year }),
+                ]);
+            } else {
+                // Fetch all-time data (fallback)
+                [expRes, incRes] = await Promise.all([
+                    dashboardService.expensesByCategory(),
+                    dashboardService.incomeByCategory(),
+                ]);
+            }
 
             const exp = (expRes.data || []).map((x) => ({
                 type: x.type,
@@ -44,6 +75,28 @@ const Visualization = () => {
         }
     };
 
+    const fetchTrendData = async () => {
+        setLoadingTrend(true);
+        try {
+            const res = await dashboardService.monthlyHistory(6);
+            const data = (res.data?.data || []).map((r) => {
+                const label = dayjs(`${r.year}-${String(r.month).padStart(2, '0')}-01`).format('MMM YYYY');
+                return {
+                    month: label,
+                    Income: Number(r.totalIncome || 0),
+                    Expenses: Number(r.totalExpenses || 0),
+                    Savings: Number(r.monthlySavings || 0),
+                };
+            });
+            setTrendData(data);
+        } catch (e) {
+            message.error('Failed to load trend data');
+            console.error(e);
+        } finally {
+            setLoadingTrend(false);
+        }
+    };
+
     const fetchMonthly = async (monthDayjs) => {
         setLoadingMonthly(true);
         try {
@@ -61,8 +114,9 @@ const Visualization = () => {
     };
 
     useEffect(() => {
-        fetchCategoryData();
+        fetchCategoryData(selectedMonth);
         fetchMonthly(selectedMonth);
+        fetchTrendData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -72,13 +126,15 @@ const Visualization = () => {
     };
 
     const savingsValue = Number(monthly?.monthlySavings ?? 0);
-    const savingsColor = savingsValue < 0 ? '#cf1322' : '#3f8600';
+    const savingsColor = savingsValue < 0 ? CHART_COLORS.EXPENSES : CHART_COLORS.SAVINGS;
 
-    const monthlyBarData = useMemo(() => {
+    // Stacked bar chart data showing expenses vs savings
+    const stackedBarData = useMemo(() => {
+        const expenses = Number(monthly?.totalExpenses ?? 0);
+        const savings = Math.max(0, Number(monthly?.monthlySavings ?? 0));
         return [
-            { name: 'Income', amount: Number(monthly?.totalIncome ?? 0) },
-            { name: 'Expenses', amount: Number(monthly?.totalExpenses ?? 0) },
-            { name: 'Savings', amount: Number(monthly?.monthlySavings ?? 0) },
+            { type: 'Expenses', value: expenses },
+            { type: 'Savings', value: savings },
         ];
     }, [monthly]);
 
@@ -88,10 +144,23 @@ const Visualization = () => {
         colorField: 'type',
         radius: 0.9,
         legend: { position: 'bottom' },
-        label: { 
+        label: {
             position: 'inside',
-            text: (datum) => `${datum.type}\n$${formatMoney(datum.value)}`,
-         },
+            formatter: (datum) => `${datum.type}\n$${formatMoney(datum.value)}`,
+        },
+        color: ({ type }) => {
+            // Use consistent colors for expense categories
+            const categoryColors = {
+                'Food': '#ff7875',
+                'Transport': '#ff9c6e',
+                'Entertainment': '#ffc53d',
+                'Utilities': '#95de64',
+                'Healthcare': '#69c0ff',
+                'Shopping': '#b37feb',
+                'Other': '#d9d9d9'
+            };
+            return categoryColors[type] || CHART_COLORS.EXPENSES;
+        },
     };
 
     const incomePieConfig = {
@@ -100,26 +169,38 @@ const Visualization = () => {
         colorField: 'type',
         radius: 0.9,
         legend: { position: 'bottom' },
-        label: { 
+        label: {
             position: 'inside',
-            text: (datum) => `${datum.type}\n$${formatMoney(datum.value)}`,
+            formatter: (datum) => `${datum.type}\n$${formatMoney(datum.value)}`,
         },
-
+        color: ({ type }) => {
+            // Use consistent colors for income categories
+            const categoryColors = {
+                'Salary': '#95de64',
+                'Freelance': '#b7eb8f',
+                'Investment': '#ffd666',
+                'Business': '#87d068',
+                'Other': '#d9d9d9'
+            };
+            return categoryColors[type] || CHART_COLORS.INCOME;
+        },
     };
 
-    const monthlyColumnConfig = {
-        data: monthlyBarData,
-        xField: 'name',
-        yField: 'amount',
-        colorField: 'name',
-        legend: false,
+    // Stacked column configuration for income breakdown
+    const stackedColumnConfig = {
+        data: stackedBarData,
+        xField: 'type',
+        yField: 'value',
+        colorField: 'type',
+        color: ({ type }) => type === 'Expenses' ? CHART_COLORS.EXPENSES : CHART_COLORS.SAVINGS,
         yAxis: {
             label: {
                 formatter: (v) => `$${v}`,
             },
         },
-        tooltip: {
-            formatter: (datum) => ({ name: datum.name, value: `$${formatMoney(datum.amount)}` }),
+        label: {
+            position: 'middle',
+            formatter: (datum) => `$${formatMoney(datum.value)}`,
         },
     };
 
@@ -135,6 +216,7 @@ const Visualization = () => {
                             if (!val) return;
                             setSelectedMonth(val);
                             fetchMonthly(val);
+                            fetchCategoryData(val); // Update pie charts with selected month
                         }}
                     />
                 </div>
@@ -171,25 +253,61 @@ const Visualization = () => {
                 </Col>
 
                 <Col xs={24}>
-                    <Card title={`Income vs Expenses vs Savings (${selectedMonth.format('MMM YYYY')})`}>
+                    <Card title={`Income Breakdown (${selectedMonth.format('MMM YYYY')})`}>
                         <Spin spinning={loadingMonthly}>
-                            <Column {...monthlyColumnConfig} />
+                            <Column {...stackedColumnConfig} />
                         </Spin>
                     </Card>
                 </Col>
 
                 <Col xs={24} md={12}>
-                    <Card title="Expenses by Category (All Time)">
+                    <Card title={`Expenses by Category (${selectedMonth.format('MMM YYYY')})`}>
                         <Spin spinning={loading}>
-                            {expenseData.length ? <Pie {...expensePieConfig} /> : 'No expense data'}
+                            {expenseData.length ? <Pie {...expensePieConfig} /> : 'No expense data for this month'}
                         </Spin>
                     </Card>
                 </Col>
 
                 <Col xs={24} md={12}>
-                    <Card title="Income by Category (All Time)">
+                    <Card title={`Income by Category (${selectedMonth.format('MMM YYYY')})`}>
                         <Spin spinning={loading}>
-                            {incomeData.length ? <Pie {...incomePieConfig} /> : 'No income data'}
+                            {incomeData.length ? <Pie {...incomePieConfig} /> : 'No income data for this month'}
+                        </Spin>
+                    </Card>
+                </Col>
+
+                <Col xs={24}>
+                    <Card title="6-Month Trend">
+                        <Spin spinning={loadingTrend}>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={trendData}>
+                                    <XAxis dataKey="month" />
+                                    <YAxis tickFormatter={(v) => `$${v}`} />
+                                    <Tooltip formatter={(value, name) => [`$${formatMoney(value)}`, name]} />
+                                    <Legend verticalAlign="bottom" height={36} />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="Income"
+                                        stroke={CHART_COLORS.INCOME}
+                                        name="Income"
+                                        strokeWidth={2}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="Expenses"
+                                        stroke={CHART_COLORS.EXPENSES}
+                                        name="Expenses"
+                                        strokeWidth={2}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="Savings"
+                                        stroke={CHART_COLORS.SAVINGS}
+                                        name="Savings"
+                                        strokeWidth={2}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
                         </Spin>
                     </Card>
                 </Col>
