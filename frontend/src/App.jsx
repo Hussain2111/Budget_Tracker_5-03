@@ -1,22 +1,15 @@
 import { useState, useEffect } from "react";
+import { Spin, message } from "antd";
 import {
-  Layout,
-  Menu,
-  Dropdown,
-  Avatar,
-  Spin,
-  Typography,
-  Button,
-} from "antd";
-import {
-  LogoutOutlined,
-  UserOutlined,
   DashboardOutlined,
   SwapOutlined,
-  BankOutlined,
   WalletOutlined,
+  BankOutlined,
   BarChartOutlined,
   HistoryOutlined,
+  InfoCircleOutlined,
+  CalendarOutlined,
+  DownOutlined,
 } from "@ant-design/icons";
 import Transactions from "./components/Transactions";
 import Savings from "./components/Savings";
@@ -29,14 +22,11 @@ import Register from "./pages/Register";
 import { authService } from "./services/apiService";
 import "./App.css";
 
-const { Text } = Typography;
-const { Sider, Content, Footer } = Layout;
-
 const NAVIGATION_ITEMS = [
   { key: "dashboard", icon: <DashboardOutlined />, label: "Dashboard" },
   { key: "transactions", icon: <SwapOutlined />, label: "Transactions" },
-  { key: "savings", icon: <BankOutlined />, label: "Savings" },
   { key: "budget", icon: <WalletOutlined />, label: "Budget" },
+  { key: "savings", icon: <BankOutlined />, label: "Savings" },
   { key: "visualization", icon: <BarChartOutlined />, label: "Visualization" },
   { key: "summary", icon: <HistoryOutlined />, label: "Summary" },
 ];
@@ -173,86 +163,58 @@ function App() {
   }
 
   return (
-      <Layout style={{ minHeight: "100vh" }}>
-        <Sider
-            collapsible
-            collapsed={isCollapsed}
-            onCollapse={setIsCollapsed}
-            width={250}
-            style={{
-              background: "#001529",
-              display: "flex",
-              flexDirection: "column",
-              position: "fixed",
-              height: "100vh",
-              left: 0,
-              top: 0,
-              zIndex: 100,
-              overflow: "hidden",
-            }}
-        >
-          <div className="sidebar-header">
-            {isCollapsed ? (
-                <img
-                    className="sidebar-logo"
-                    src="/vite.svg"
-                    alt="Budget Tracker"
-                />
-            ) : (
-                <Text strong style={{ color: "#fff" }}>Budget Tracker</Text>
-            )}
+    <div className="app-layout">
+      {/* Sidebar */}
+      <div className="sidebar">
+        <div className="sidebar-logo">
+          <div className="logo-mark">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
+            </svg>
           </div>
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[activePage]}
-            items={NAVIGATION_ITEMS}
-            onClick={({key}) => setActivePage(key) && localStorage.setItem(ACTIVE_PAGE, key)}
-            style={{ flex: 1, borderRight:0 }}
-          />
-          <div className="sidebar-footer">
-            <Dropdown
-                menu={
-                  {
-                    items: [
-                      {
-                        key: "profile",
-                        icon: <UserOutlined />,
-                        label: user?.username || "Profile",
-                        disabled: true,
-                      },
-                      {type: "divider"},
-                      {
-                        key: "logout",
-                        icon: <LogoutOutlined />,
-                        label: "Logout",
-                        onClick: handleLogout,
-                      }
-                    ],
-                  }}
-                placement="topLeft"
+          <span className="logo-name">Budget Tracker</span>
+        </div>
+        <nav className="sidebar-nav">
+          {NAVIGATION_ITEMS.map((item) => (
+            <div
+              key={item.key}
+              className={`nav-item ${activePage === item.key ? "active" : ""}`}
+              onClick={() => setActivePage(item.key)}
             >
-              <div className="sidebar-user">
-                <Avatar size="small" icon={<UserOutlined />} />
-                {!isCollapsed && (
-                    <Text style={{ color: "#fff", marginLeft: 8, fontSize: 15 }} ellipsis>
-                      {user?.username || "User"}
-                    </Text>
-                )}
-              </div>
-            </Dropdown>
-
+              {item.icon}
+              {item.label}
+            </div>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="avatar">
+            {user?.username ? user.username.substring(0, 2).toUpperCase() : "JS"}
           </div>
-        </Sider>
-        <Layout style={{ marginLeft: isCollapsed ? 80 : 250, transition: "margin-left 0.2s" }}>
-          <Content style={{ padding: "24px", minHeight: "calc(100vh - 70px)" }}>
-            {MAP[activePage]}
-          </Content>
-          <Footer style={{ textAlign: "center", padding: "16px" }}>
-            Budget Tracker © {new Date().getFullYear()}
-          </Footer>
-        </Layout>
-      </Layout>
+          <div>
+            <div className="sidebar-user-name">{user?.username || "Jamie S."}</div>
+            <div className="sidebar-user-plan">Personal</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="main">
+        <div className="topbar">
+          <span className="topbar-title">{NAVIGATION_ITEMS.find(item => item.key === activePage)?.label || "Dashboard"}</span>
+          <div className="topbar-right">
+            <div className="month-select">
+              <CalendarOutlined />
+              March 2026
+              <DownOutlined />
+            </div>
+            <button className="btn-primary-sm">+ Add Transaction</button>
+          </div>
+        </div>
+        <div className="page-content">
+          {MAP[activePage]}
+        </div>
+      </div>
+    </div>
   );
 }
 

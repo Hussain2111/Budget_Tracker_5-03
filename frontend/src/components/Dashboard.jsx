@@ -1,21 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-    Card,
-    Col,
-    DatePicker,
-    Row,
-    Statistic,
-    message,
-    Spin,
-    Table,
-    Tag,
-    List,
-} from "antd";
+import { Spin } from "antd";
 import { dashboardService, ledgerService } from "../services/apiService";
-import { TrendCard } from "./dashboard/TrendCard";
-import { BudgetPaceCard } from "./dashboard/BudgetPaceCard";
-import { SpotlightInsight } from "./dashboard/SpotlightInsight";
 import dayjs from "dayjs";
+import MetricCard from "./MetricCard";
+import InsightBanner from "./InsightBanner";
+import RecentTransactionsList from "./RecentTransactionsList";
+import TopSpendingCategories from "./TopSpendingCategories";
 
 // Utility functions for deriving dashboard insights
 function calculateMonthProgress(monthDayjs) {
@@ -239,135 +229,69 @@ const Dashboard = () => {
     ];
 
     return (
-        <div style={{ padding: 20 }}>
-            {/* ── Row 0: Financial Pulse (full width) ── */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                <Col span={24}>
-                    <Spin spinning={loading}>
-                        <BudgetPaceCard
-                            monthlyData={data.monthly}
-                            historicalData={data.historicalData}
-                            selectedMonth={selectedMonth}
+        <div className="page-content">
+            <Spin spinning={loading}>
+                {/* Metrics Row */}
+                <div className="metric-row">
+                    <MetricCard
+                        title="Total Income"
+                        value={`$${formatMoney(data.monthly?.totalIncome)}`}
+                        badge={data.momDelta?.incomeChangePercent ? `+${data.momDelta.incomeChangePercent}%` : null}
+                        badgeType={data.momDelta?.incomeChangePercent > 0 ? 'up-good' : 'up-bad'}
+                        valueColor="green"
+                        subtitle={`vs $${formatMoney(data.previousMonthly?.totalIncome)} last month`}
+                    />
+                    <MetricCard
+                        title="Total Expenses"
+                        value={`$${formatMoney(data.monthly?.totalExpenses)}`}
+                        badge={data.momDelta?.expenseChangePercent ? `+${data.momDelta.expenseChangePercent}%` : null}
+                        badgeType={data.momDelta?.expenseChangePercent > 0 ? 'up-bad' : 'up-good'}
+                        subtitle={`vs $${formatMoney(data.previousMonthly?.totalExpenses)} last month`}
+                    />
+                    <MetricCard
+                        title="Net Savings"
+                        value={`$${formatMoney(data.monthly?.monthlySavings)}`}
+                        badge={data.momDelta?.savingsChangePercent ? `+${data.momDelta.savingsChangePercent}%` : null}
+                        badgeType={data.momDelta?.savingsChangePercent > 0 ? 'up-good' : 'up-bad'}
+                        valueColor="indigo"
+                        subtitle={`${data.monthly?.totalIncome ? Math.round((Number(data.monthly.monthlySavings) / Number(data.monthly.totalIncome)) * 100) : 0}% savings rate`}
+                    />
+                </div>
+
+                {/* Insight Banner */}
+                <InsightBanner
+                    topSpendingCategory={data.topSpendingCategory}
+                    momDelta={data.momDelta}
+                    monthProgress={data.monthProgress}
+                    monthlyData={data.monthly}
+                    formatMoney={formatMoney}
+                />
+
+                {/* Two Column Layout */}
+                <div className="two-col">
+                    <div className="card">
+                        <div className="card-header">
+                            <span className="card-title">Recent Transactions</span>
+                            <span className="card-link">View all</span>
+                        </div>
+                        <RecentTransactionsList
+                            transactions={data.recentRows}
                             formatMoney={formatMoney}
                         />
-                    </Spin>
-                </Col>
-            </Row>
+                    </div>
 
-            {/* ── Row 0.5: Spotlight Insight ── */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                <Col span={24}>
-                    <Spin spinning={loading}>
-                        <SpotlightInsight
-                            topSpendingCategory={data.topSpendingCategory}
-                            momDelta={data.momDelta}
-                            monthProgress={data.monthProgress}
-                            monthlyData={data.monthly}
-                            historicalData={data.historicalData}
-                            selectedMonth={selectedMonth}
+                    <div className="card">
+                        <div className="card-header">
+                            <span className="card-title">Top Spending Categories</span>
+                            <span className="card-link">View budget</span>
+                        </div>
+                        <TopSpendingCategories
+                            categories={data.expenseCategories}
                             formatMoney={formatMoney}
                         />
-                    </Spin>
-                </Col>
-            </Row>
-
-            {/* ── Row 1: MoM Delta Trend Cards (3-column, equal height) ── */}
-            <Row gutter={[16, 16]} align="stretch" style={{ marginBottom: 16 }}>
-                <Col xs={24} sm={12} lg={8}>
-                    <Spin spinning={loading}>
-                        <TrendCard
-                            title="Income This Month"
-                            value={formatMoney(data.monthly?.totalIncome)}
-                            deltaPercent={data.momDelta?.incomeChangePercent}
-                            color="#3f8600"
-                            borderColor="#52c41a"
-                        />
-                    </Spin>
-                </Col>
-
-                <Col xs={24} sm={12} lg={8}>
-                    <Spin spinning={loading}>
-                        <TrendCard
-                            title="Expenses This Month"
-                            value={formatMoney(data.monthly?.totalExpenses)}
-                            deltaPercent={data.momDelta?.expenseChangePercent}
-                            color="#cf1322"
-                            borderColor="#ff4d4f"
-                            invertPositive={true}
-                        />
-                    </Spin>
-                </Col>
-
-                <Col xs={24} sm={12} lg={8}>
-                    <Spin spinning={loading}>
-                        <TrendCard
-                            title="Net Monthly Savings"
-                            value={formatMoney(data.monthly?.monthlySavings)}
-                            deltaPercent={data.momDelta?.savingsChangePercent}
-                            color={Number(data.monthly?.monthlySavings || 0) < 0 ? "#cf1322" : "#3f8600"}
-                            borderColor={Number(data.monthly?.monthlySavings || 0) < 0 ? "#ff4d4f" : "#52c41a"}
-                        />
-                    </Spin>
-                </Col>
-            </Row>
-
-            {/* ── Row 2: Recent Transactions + Top Categories ── */}
-            <Row gutter={[16, 16]} align="stretch">
-                <Col xs={24} lg={14}>
-                    <Card title="Recent Transactions" style={{ height: "100%" }}>
-                        <Spin spinning={loading}>
-                            <Table
-                                columns={recentColumns}
-                                dataSource={data.recentRows}
-                                pagination={false}
-                                size="middle"
-                                scroll={{ x: "max-content" }}
-                            />
-                        </Spin>
-                    </Card>
-                </Col>
-
-                <Col xs={24} lg={10}>
-                    <Card className="stat-card" title="Top Categories This Month" style={{ height: "100%" }}>
-                        <Spin spinning={loading}>
-                            <Row gutter={16}>
-                                <Col span={12}>
-                                    <div style={{ fontWeight: 600, marginBottom: 8, color: "#cf1322" }}>Expenses</div>
-                                    <List
-                                        size="small"
-                                        dataSource={(data.expenseCategories || []).slice(0, 5)}
-                                        locale={{ emptyText: "No data" }}
-                                        renderItem={(item) => (
-                                            <List.Item style={{ padding: "4px 0" }}>
-                                                <div style={{ display: "flex", justifyContent: "space-between", width: "100%", fontSize: 12 }}>
-                                                    <span>{item.type}</span>
-                                                    <span style={{ color: "#cf1322", fontWeight: 600 }}>-${formatMoney(item.amount)}</span>
-                                                </div>
-                                            </List.Item>
-                                        )}
-                                    />
-                                </Col>
-                                <Col span={12}>
-                                    <div style={{ fontWeight: 600, marginBottom: 8, color: "#3f8600" }}>Income</div>
-                                    <List
-                                        size="small"
-                                        dataSource={(data.incomeCategories || []).slice(0, 5)}
-                                        locale={{ emptyText: "No data" }}
-                                        renderItem={(item) => (
-                                            <List.Item style={{ padding: "4px 0" }}>
-                                                <div style={{ display: "flex", justifyContent: "space-between", width: "100%", fontSize: 12 }}>
-                                                    <span>{item.type}</span>
-                                                    <span style={{ color: "#3f8600", fontWeight: 600 }}>+${formatMoney(item.amount)}</span>
-                                                </div>
-                                            </List.Item>
-                                        )}
-                                    />
-                                </Col>
-                            </Row>
-                        </Spin>
-                    </Card>
-                </Col>
-            </Row>
+                    </div>
+                </div>
+            </Spin>
         </div>
     );
 };
