@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Spin } from "antd";
+import { Spin, message, Table, Tag, DatePicker } from "antd";
 import { dashboardService, ledgerService } from "../services/apiService";
 import dayjs from "dayjs";
-import MetricCard from "./MetricCard";
-import InsightBanner from "./InsightBanner";
-import RecentTransactionsList from "./RecentTransactionsList";
-import TopSpendingCategories from "./TopSpendingCategories";
+import { TrendCard } from "./dashboard/TrendCard";
+import { BudgetPaceCard } from "./dashboard/BudgetPaceCard";
+import { SpotlightInsight } from "./dashboard/SpotlightInsight";
+
 
 // Utility functions for deriving dashboard insights
 function calculateMonthProgress(monthDayjs) {
@@ -169,7 +169,7 @@ function useDashboardData(selectedMonth) {
     return { loading, data };
 }
 
-const Dashboard = () => {
+const Dashboard = ({ onNavigate }) => {
     const currentMonth = useMemo(() => dayjs(), []);
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
@@ -184,8 +184,6 @@ const Dashboard = () => {
         });
     };
 
-    const balanceColor =
-        data.summary && Number(data.summary.currentBalance) < 0 ? "#cf1322" : "#3f8600";
 
     const recentColumns = [
         {
@@ -231,64 +229,119 @@ const Dashboard = () => {
     return (
         <div className="page-content">
             <Spin spinning={loading}>
+                <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 20,
+                }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>
+                        {selectedMonth.format("MMMM YYYY")}
+                    </div>
+                    <DatePicker
+                        picker="month"
+                        value={selectedMonth}
+                        onChange={(val) => { if (val) setSelectedMonth(val); }}
+                        allowClear={false}
+                    />
+                </div>
                 {/* Metrics Row */}
                 <div className="metric-row">
-                    <MetricCard
+                    <TrendCard
                         title="Total Income"
-                        value={`$${formatMoney(data.monthly?.totalIncome)}`}
-                        badge={data.momDelta?.incomeChangePercent ? `+${data.momDelta.incomeChangePercent}%` : null}
-                        badgeType={data.momDelta?.incomeChangePercent > 0 ? 'up-good' : 'up-bad'}
-                        valueColor="green"
-                        subtitle={`vs $${formatMoney(data.previousMonthly?.totalIncome)} last month`}
+                        value={formatMoney(data.monthly?.totalIncome)}
+                        deltaPercent={data.momDelta?.incomeChangePercent}
+                        color="#3f8600"
+                        borderColor="#3f8600"
                     />
-                    <MetricCard
+                    <TrendCard
                         title="Total Expenses"
-                        value={`$${formatMoney(data.monthly?.totalExpenses)}`}
-                        badge={data.momDelta?.expenseChangePercent ? `+${data.momDelta.expenseChangePercent}%` : null}
-                        badgeType={data.momDelta?.expenseChangePercent > 0 ? 'up-bad' : 'up-good'}
-                        subtitle={`vs $${formatMoney(data.previousMonthly?.totalExpenses)} last month`}
+                        value={formatMoney(data.monthly?.totalExpenses)}
+                        deltaPercent={data.momDelta?.expenseChangePercent}
+                        color="#cf1322"
+                        borderColor="#cf1322"
+                        invertPositive={true}
                     />
-                    <MetricCard
+                    <TrendCard
                         title="Net Savings"
-                        value={`$${formatMoney(data.monthly?.monthlySavings)}`}
-                        badge={data.momDelta?.savingsChangePercent ? `+${data.momDelta.savingsChangePercent}%` : null}
-                        badgeType={data.momDelta?.savingsChangePercent > 0 ? 'up-good' : 'up-bad'}
-                        valueColor="indigo"
-                        subtitle={`${data.monthly?.totalIncome ? Math.round((Number(data.monthly.monthlySavings) / Number(data.monthly.totalIncome)) * 100) : 0}% savings rate`}
+                        value={formatMoney(data.monthly?.monthlySavings)}
+                        deltaPercent={data.momDelta?.savingsChangePercent}
+                        color="#6366f1"
+                        borderColor="#6366f1"
                     />
                 </div>
 
                 {/* Insight Banner */}
-                <InsightBanner
+                <SpotlightInsight
                     topSpendingCategory={data.topSpendingCategory}
                     momDelta={data.momDelta}
                     monthProgress={data.monthProgress}
                     monthlyData={data.monthly}
+                    historicalData={data.historicalData}
+                    selectedMonth={selectedMonth}
                     formatMoney={formatMoney}
                 />
+
+                {/* Budget Pace Card */}
+                <div style={{ marginBottom: 24 }}>
+                    <BudgetPaceCard
+                        monthlyData={data.monthly}
+                        historicalData={data.historicalData}
+                        selectedMonth={selectedMonth}
+                        formatMoney={formatMoney}
+                    />
+                </div>
 
                 {/* Two Column Layout */}
                 <div className="two-col">
                     <div className="card">
                         <div className="card-header">
                             <span className="card-title">Recent Transactions</span>
-                            <span className="card-link">View all</span>
+                            <span className="card-link" onClick={() => onNavigate?.("transactions")} style={{ cursor: "pointer" }}>
+                                View all →
+                            </span>
                         </div>
-                        <RecentTransactionsList
-                            transactions={data.recentRows}
-                            formatMoney={formatMoney}
+                        <Table
+                            columns={recentColumns}
+                            dataSource={data.recentRows}
+                            pagination={false}
+                            size="small"
+                            scroll={{ y: 300 }}
                         />
                     </div>
 
                     <div className="card">
                         <div className="card-header">
                             <span className="card-title">Top Spending Categories</span>
-                            <span className="card-link">View budget</span>
+                            <span className="card-link" onClick={() => onNavigate?.("budget")} style={{ cursor: "pointer" }}>
+                                View budget →
+                            </span>
                         </div>
-                        <TopSpendingCategories
-                            categories={data.expenseCategories}
-                            formatMoney={formatMoney}
-                        />
+                        <div style={{ padding: '16px 0' }}>
+                            {data.expenseCategories.slice(0, 5).map((category, index) => (
+                                <div key={category.type} style={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'center',
+                                    padding: '8px 0',
+                                    borderBottom: index < 4 ? '1px solid #f0f0f0' : 'none'
+                                }}>
+                                    <div>
+                                        <div style={{ fontWeight: 500 }}>{category.type}</div>
+                                        <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                                            {category.count || 1} transaction{category.count !== 1 ? 's' : ''}
+                                        </div>
+                                    </div>
+                                    <div style={{ 
+                                        fontSize: 16, 
+                                        fontWeight: 600, 
+                                        color: '#cf1322' 
+                                    }}>
+                                        ${formatMoney(category.amount)}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </Spin>
