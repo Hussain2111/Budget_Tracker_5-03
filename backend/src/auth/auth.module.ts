@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -7,9 +7,8 @@ import { AuthController } from './auth.controller';
 import { User } from './entities/user.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import {JWT_SECRET} from "../jwt.constants";
-// import {GoogleStrategy} from "./strategies/google.strategy";
-
+import { JWT_SECRET } from '../jwt.constants';
+import { RecurringModule } from '../recurring/recurring.module';
 
 @Module({
   imports: [
@@ -17,11 +16,12 @@ import {JWT_SECRET} from "../jwt.constants";
     PassportModule,
     JwtModule.register({
       secret: JWT_SECRET,
-      signOptions: { expiresIn: "7d" },
+      signOptions: { expiresIn: '7d' },
     }),
+    forwardRef(() => RecurringModule),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard], // GoogleStrategy temporarily commented out
+  providers: [AuthService, JwtStrategy, JwtAuthGuard],
   exports: [AuthService, JwtModule, PassportModule, JwtAuthGuard, JwtStrategy],
 })
 export class AuthModule {}

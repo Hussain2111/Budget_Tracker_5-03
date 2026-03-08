@@ -1,4 +1,12 @@
-import { IsString, IsNumber, IsDate, IsOptional, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsDate,
+  IsOptional,
+  IsBoolean,
+  IsIn,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateIncomeDto {
@@ -19,4 +27,12 @@ export class CreateIncomeDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isRecurring?: boolean;
+
+  @IsOptional()
+  @IsIn(['monthly'])
+  recurringFrequency?: string;
 }

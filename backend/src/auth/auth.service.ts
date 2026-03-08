@@ -1,17 +1,26 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+  forwardRef,
+  Inject,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { RegisterDto, LoginDto } from './dto/create-auth.dto';
+import { RecurringService } from '../recurring/recurring.service';
 
 @Injectable()
 export class AuthService {
   constructor(
-      @InjectRepository(User)
-      private readonly userRepository: Repository<User>,
-      private readonly jwtService: JwtService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly jwtService: JwtService,
+    @Inject(forwardRef(() => RecurringService))
+    private readonly recurringService: RecurringService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -35,7 +44,6 @@ export class AuthService {
 
     await this.userRepository.save(user);
 
-    // Generate JWT token
     const payload = { sub: user.id, username: user.username };
     const token = this.jwtService.sign(payload);
 
@@ -53,10 +61,7 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { username, password } = loginDto;
 
-    // Find user by username
-    const user = await this.userRepository.findOne({
-      where: { username },
-    });
+    const user = await this.userRepository.findOne({ where: { username } });
 
     if (!user) {
       throw new UnauthorizedException('Invalid username or password');
@@ -64,14 +69,20 @@ export class AuthService {
     if (!user.password) {
       throw new UnauthorizedException('Invalid username or password');
     }
-    // Compare passwords
-    const isPasswordValid = await bcrypt.compare(password, user.password);
 
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid username or password');
     }
 
-    // Generate JWT token
+    // Auto-generate any overdue recurring transactions
+    try {
+      await this.recurringService.processRecurringForUser(user.id);
+    } catch (err) {
+      // Non-fatal — don't block login if this fails
+      console.error('Recurring processing failed:', err);
+    }
+
     const payload = { sub: user.id, username: user.username };
     const token = this.jwtService.sign(payload);
 
@@ -87,14 +98,10 @@ export class AuthService {
   }
 
   async validateUser(userId: string): Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-    });
-
+    const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-
     return user;
   }
 
@@ -105,7 +112,7 @@ export class AuthService {
   }) {
     const email = googleUser.email?.toLowerCase();
     if (!email) {
-      throw new UnauthorizedException("Google account has no email");
+      throw new UnauthorizedException('Google account has no email');
     }
 
     let user = await this.userRepository.findOne({
@@ -113,12 +120,12 @@ export class AuthService {
     });
 
     if (!user) {
-      // Ensure unique username (simple approach)
-      const baseUsername = (googleUser.username || email.split("@")[0]).replace(/\s+/g, "");
+      const baseUsername = (
+        googleUser.username || email.split('@')[0]
+      ).replace(/\s+/g, '');
       let username = baseUsername;
       let counter = 1;
 
-      // Avoid collisions
       while (await this.userRepository.findOne({ where: { username } })) {
         username = `${baseUsername}${counter++}`;
       }
@@ -132,11 +139,18 @@ export class AuthService {
       user = await this.userRepository.save(user);
     }
 
+    // Auto-generate recurring on Google login too
+    try {
+      await this.recurringService.processRecurringForUser(user.id);
+    } catch (err) {
+      console.error('Recurring processing failed:', err);
+    }
+
     const payload = { sub: user.id, username: user.username };
     const token = this.jwtService.sign(payload);
 
     return {
-      message: "Google login successful",
+      message: 'Google login successful',
       access_token: token,
       user: { id: user.id, username: user.username, email: user.email },
     };

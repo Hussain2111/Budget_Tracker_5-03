@@ -1,4 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('income')
 export class Income {
@@ -22,6 +28,28 @@ export class Income {
 
   @Column({ nullable: true })
   description?: string;
+
+  // ── Recurring fields ──────────────────────────────────────────
+  @Column({ default: false })
+  isRecurring: boolean;
+
+  @Column({ nullable: true })
+  recurringFrequency?: string; // 'monthly'
+
+  /**
+   * The UUID of the template (parent) recurring transaction.
+   * - On the template itself this is null.
+   * - On every auto-generated child this points back to the template.
+   */
+  @Column({ nullable: true })
+  recurringParentId?: string;
+
+  /**
+   * ISO date string (YYYY-MM) of the last month for which a child
+   * was generated.  Only set on the template row.
+   */
+  @Column({ nullable: true })
+  lastGeneratedMonth?: string;
 
   @CreateDateColumn()
   createdAt: Date;

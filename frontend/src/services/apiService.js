@@ -15,25 +15,27 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      const status = error?.response?.status;
-      const url = error?.config?.url || "";
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const url = error?.config?.url || "";
 
-      if (status === 401) {
-        const isAuthEndpoint = url.startsWith("/auth/login") || url.startsWith("/auth/register");
+    if (status === 401) {
+      const isAuthEndpoint =
+        url.startsWith("/auth/login") || url.startsWith("/auth/register");
 
-        if (!isAuthEndpoint) {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("user");
-
-          window.location.reload();
-        }
+      if (!isAuthEndpoint) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+        window.location.reload();
       }
+    }
 
-      return Promise.reject(error);
-    },
+    return Promise.reject(error);
+  },
 );
+
+export default api;
 
 export const authService = {
   register: (data) => api.post("/auth/register", data),
@@ -41,44 +43,42 @@ export const authService = {
   profile: () => api.get("/auth/profile"),
 };
 
-// ... keep the rest of your services unchanged ...
-export default api;
-
 export const expenseService = {
-  getAll: () => api.get('/expenses'),
+  getAll: () => api.get("/expenses"),
   getOne: (id) => api.get(`/expenses/${id}`),
-  create: (data) => api.post('/expenses', data),
+  create: (data) => api.post("/expenses", data),
   update: (id, data) => api.patch(`/expenses/${id}`, data),
   delete: (id) => api.delete(`/expenses/${id}`),
 };
 
 export const incomeService = {
-  getAll: () => api.get('/income'),
+  getAll: () => api.get("/income"),
   getOne: (id) => api.get(`/income/${id}`),
-  create: (data) => api.post('/income', data),
+  create: (data) => api.post("/income", data),
   update: (id, data) => api.patch(`/income/${id}`, data),
   delete: (id) => api.delete(`/income/${id}`),
 };
 
 export const dashboardService = {
-  summary: () => api.get('/dashboard/summary'),
+  summary: () => api.get("/dashboard/summary"),
   monthlySummary: (month, year) =>
-      api.get('/dashboard/monthly-summary', { params: { month, year } }),
-
-  expensesByCategory: (params) => api.get('/dashboard/expenses-by-category', { params }),
-  incomeByCategory: (params) => api.get('/dashboard/income-by-category', { params }),
-
-  monthlyHistory: (months = 12) => api.get('/dashboard/monthly-history', { params: { months } }),
+    api.get("/dashboard/monthly-summary", { params: { month, year } }),
+  expensesByCategory: (params) =>
+    api.get("/dashboard/expenses-by-category", { params }),
+  incomeByCategory: (params) =>
+    api.get("/dashboard/income-by-category", { params }),
+  monthlyHistory: (months = 12) =>
+    api.get("/dashboard/monthly-history", { params: { months } }),
 };
 
 export const ledgerService = {
-  getAll: (params) => api.get('/ledger', { params }),
+  getAll: (params) => api.get("/ledger", { params }),
 };
 
 export const savingsService = {
-  getAll: () => api.get('/savings'),
+  getAll: () => api.get("/savings"),
   getOne: (id) => api.get(`/savings/${id}`),
-  create: (data) => api.post('/savings', data),
+  create: (data) => api.post("/savings", data),
   update: (id, data) => api.patch(`/savings/${id}`, data),
   delete: (id) => api.delete(`/savings/${id}`),
   contribute: (id, data) => api.post(`/savings/${id}/contribute`, data),
@@ -86,9 +86,17 @@ export const savingsService = {
 };
 
 export const budgetService = {
-  getAll: (month, year) => api.get('/budgets', { params: { month, year } }),
-  create: (data) => api.post('/budgets', data),
+  getAll: (month, year) => api.get("/budgets", { params: { month, year } }),
+  create: (data) => api.post("/budgets", data),
   update: (id, data) => api.patch(`/budgets/${id}`, data),
   delete: (id) => api.delete(`/budgets/${id}`),
-  upsert: (data) => api.post('/budgets/upsert', data),
+  upsert: (data) => api.post("/budgets/upsert", data),
+};
+
+export const recurringService = {
+  getSummary: () => api.get("/recurring/summary"),
+};
+
+export const importService = {
+  importCsv: (kind, rows) => api.post("/import/csv", { kind, rows }),
 };

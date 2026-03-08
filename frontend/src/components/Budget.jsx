@@ -17,7 +17,7 @@ const Budget = () => {
             localStorage.removeItem("selectedMonthForBudget");
             return dayjs(stored);
         }
-        return currentMonth;
+        return currentMonth; 
     });
 
     const [monthlySummary, setMonthlySummary] = useState(null);
