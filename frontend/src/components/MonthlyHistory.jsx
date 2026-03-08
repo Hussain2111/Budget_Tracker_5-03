@@ -201,78 +201,61 @@ const MonthlyHistory = ({ onNavigate }) => {
             >
                 <Spin spinning={loading}>
                     {/* Summary Stats */}
-                    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                        <Col xs={24} md={6}>
-                            <Card>
-                                <Statistic 
-                                    title="Average Monthly Income" 
-                                    value={formatMoney(summaryStats.avgIncome)} 
-                                    prefix="$" 
-                                />
-                            </Card>
-                        </Col>
-                        <Col xs={24} md={6}>
-                            <Card>
-                                <Statistic 
-                                    title="Average Monthly Expenses" 
-                                    value={formatMoney(summaryStats.avgExpenses)} 
-                                    prefix="$" 
-                                />
-                            </Card>
-                        </Col>
-                        <Col xs={24} md={6}>
-                            <Card>
-                                {summaryStats.bestSavingsMonth ? (
-                                    <Statistic
-                                        title={`Best Savings Month — ${dayjs(`${summaryStats.bestSavingsMonth.year}-${String(summaryStats.bestSavingsMonth.month).padStart(2, '0')}-01`).format('MMM YYYY')}`}
-                                        value={formatMoney(summaryStats.bestSavingsAmount)}
-                                        prefix="$"
-                                    />
-                                ) : (
-                                    <Statistic
-                                        title="Best Savings Month"
-                                        value="-"
-                                        prefix="$"
-                                    />
-                                )}
-                            </Card>
-                        </Col>
-                        <Col xs={24} md={6}>
-                            <Card>
-                                <div style={{ textAlign: "center", padding: "8px 0" }}>
-                                    <div style={{
-                                        fontSize: 36,
-                                        marginBottom: 4,
-                                    }}>
-                                        {savingsStreak >= 3 ? "🔥" : savingsStreak >= 1 ? "✅" : "💤"}
-                                    </div>
-                                    <div style={{
-                                        fontSize: 28,
-                                        fontWeight: 700,
-                                        color: savingsStreak >= 3 ? "#fa8c16" :
-                                               savingsStreak >= 1 ? "#52c41a" : "#d9d9d9",
-                                        lineHeight: 1,
-                                        marginBottom: 4,
-                                    }}>
-                                        {savingsStreak}
-                                    </div>
-                                    <div style={{ fontSize: 12, color: "#8c8c8c" }}>
-                                        Month savings streak
-                                    </div>
-                                    {savingsStreak >= 3 && (
-                                        <div style={{
-                                            marginTop: 6,
-                                            fontSize: 11,
-                                            color: "#fa8c16",
-                                            fontWeight: 500,
-                                        }}>
-                                            Keep it going!
-                                        </div>
-                                    )}
+                    <div className="summary-stat-grid">
+                        <div className="metric-card">
+                            <div className="metric-name">Average Monthly Income</div>
+                            <div className="metric-value">${formatMoney(summaryStats.avgIncome)}</div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="metric-name">Average Monthly Expenses</div>
+                            <div className="metric-value">${formatMoney(summaryStats.avgExpenses)}</div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="metric-name">
+                                {summaryStats.bestSavingsMonth ? 
+                                    `Best Savings — ${dayjs(`${summaryStats.bestSavingsMonth.year}-${String(summaryStats.bestSavingsMonth.month).padStart(2, '0')}-01`).format('MMM YYYY')}` :
+                                    'Best Savings Month'
+                                }
+                            </div>
+                            <div className="metric-value">
+                                {summaryStats.bestSavingsMonth ? `$${formatMoney(summaryStats.bestSavingsAmount)}` : '-'}
+                            </div>
+                        </div>
+                        <div className="metric-card">
+                            <div className="metric-name">Savings Streak</div>
+                            <div style={{ textAlign: "center", padding: "8px 0" }}>
+                                <div style={{
+                                    fontSize: 36,
+                                    marginBottom: 4,
+                                }}>
+                                    {savingsStreak >= 3 ? "🔥" : savingsStreak >= 1 ? "✅" : "💤"}
                                 </div>
-                            </Card>
-                        </Col>
-                    </Row>
+                                <div style={{
+                                    fontSize: 28,
+                                    fontWeight: 700,
+                                    color: savingsStreak >= 3 ? "#fa8c16" :
+                                           savingsStreak >= 1 ? "#52c41a" : "#d9d9d9",
+                                    lineHeight: 1,
+                                    marginBottom: 4,
+                                }}>
+                                    {savingsStreak}
+                                </div>
+                                <div style={{ fontSize: 12, color: "#8c8c8c" }}>
+                                    Month savings streak
+                                </div>
+                                {savingsStreak >= 3 && (
+                                    <div style={{
+                                        marginTop: 6,
+                                        fontSize: 11,
+                                        color: "#fa8c16",
+                                        fontWeight: 500,
+                                    }}>
+                                        Keep it going!
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
 
                     {savingsStreak >= 1 && (
                         <div style={{ marginBottom: 16 }}>

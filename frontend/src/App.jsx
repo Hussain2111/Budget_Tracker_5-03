@@ -11,6 +11,15 @@ import VerifyEmail from "./pages/VerifyEmail";
 
 // App Shell
 import Sidebar from "./components/Sidebar";
+import { 
+  Menu, 
+  LayoutDashboard, 
+  ArrowLeftRight, 
+  PiggyBank, 
+  Target, 
+  BarChart2, 
+  FileText 
+} from "lucide-react";
 
 // Inner pages (lazy-loaded via dynamic import pattern — just import all for now)
 import Dashboard from "./components/Dashboard";
@@ -30,6 +39,16 @@ const PAGE_TITLES = {
   summary:       "Summary",
 };
 
+// Bottom navigation items
+const BOTTOM_NAV = [
+  { key: "dashboard",     label: "Home",        icon: LayoutDashboard },
+  { key: "transactions",  label: "Txns",        icon: ArrowLeftRight },
+  { key: "savings",       label: "Savings",     icon: PiggyBank },
+  { key: "budget",        label: "Budget",      icon: Target },
+  { key: "visualization", label: "Charts",      icon: BarChart2 },
+  { key: "summary",       label: "Summary",     icon: FileText },
+];
+
 function detectRoute() {
   const params = new URLSearchParams(window.location.search);
   const path = window.location.pathname;
@@ -44,6 +63,7 @@ export default function App() {
   const [view, setView] = useState("landing"); // landing | login | register | forgot | reset | verify | app
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [user, setUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     // Handle special URL routes first
@@ -202,14 +222,27 @@ export default function App() {
 
     return (
       <div className="app-layout">
+        {/* Sidebar Overlay */}
+        {sidebarOpen && (
+          <div 
+            className="sidebar-overlay" 
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
         <Sidebar
           currentPage={currentPage}
           onNavigate={setCurrentPage}
           user={user}
           onLogout={handleLogout}
+          className={sidebarOpen ? "open" : ""}
+          onClose={() => setSidebarOpen(false)}
         />
         <main className="main">
           <div className="topbar">
+            <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}>
+              <Menu size={20} />
+            </button>
             <span className="topbar-title">{PAGE_TITLES[currentPage]}</span>
             <div className="topbar-right">
               <div className="topbar-pill">
@@ -222,6 +255,20 @@ export default function App() {
             {renderPage()}
           </div>
         </main>
+        
+        {/* Bottom Navigation */}
+        <nav className="bottom-nav">
+          {BOTTOM_NAV.map(({ key, label, icon: Icon }) => (
+            <div
+              key={key}
+              className={`bottom-nav-item ${currentPage === key ? "active" : ""}`}
+              onClick={() => setCurrentPage(key)}
+            >
+              <Icon size={20} />
+              <span>{label}</span>
+            </div>
+          ))}
+        </nav>
       </div>
     );
   }

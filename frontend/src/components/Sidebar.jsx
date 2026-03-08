@@ -7,6 +7,7 @@ import {
   FileText,
   LogOut,
   Leaf,
+  X,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -18,19 +19,22 @@ const NAV_ITEMS = [
   { key: "summary",       label: "Summary",       icon: FileText },
 ];
 
-export default function Sidebar({ currentPage, onNavigate, user, onLogout }) {
+export default function Sidebar({ currentPage, onNavigate, user, onLogout, className, onClose }) {
   const initials = user?.username
     ? user.username.slice(0, 2).toUpperCase()
     : "?";
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${className || ''}`}>
       {/* Logo */}
       <div className="sidebar-logo">
         <div className="logo-mark">
           <Leaf size={14} color="white" strokeWidth={2.5} />
         </div>
         <span className="logo-name">Fina</span>
+        <button className="sidebar-close-btn" onClick={onClose}>
+          <X size={18} color="rgba(255,255,255,0.7)" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -40,7 +44,10 @@ export default function Sidebar({ currentPage, onNavigate, user, onLogout }) {
           <div
             key={key}
             className={`nav-item ${currentPage === key ? "active" : ""}`}
-            onClick={() => onNavigate(key)}
+            onClick={() => {
+              onNavigate(key);
+              onClose?.();
+            }}
           >
             <Icon size={14} strokeWidth={currentPage === key ? 2.5 : 2} />
             {label}

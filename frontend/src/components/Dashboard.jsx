@@ -229,13 +229,8 @@ const Dashboard = ({ onNavigate }) => {
     return (
         <div className="page-content">
             <Spin spinning={loading}>
-                <div style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 20,
-                }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>
+                <div className="page-header">
+                    <div className="page-title">
                         {selectedMonth.format("MMMM YYYY")}
                     </div>
                     <DatePicker
@@ -297,7 +292,7 @@ const Dashboard = ({ onNavigate }) => {
                     <div className="card">
                         <div className="card-header">
                             <span className="card-title">Recent Transactions</span>
-                            <span className="card-link" onClick={() => onNavigate?.("transactions")} style={{ cursor: "pointer" }}>
+                            <span className="card-link" onClick={() => onNavigate?.("transactions")}>
                                 View all →
                             </span>
                         </div>
@@ -313,30 +308,20 @@ const Dashboard = ({ onNavigate }) => {
                     <div className="card">
                         <div className="card-header">
                             <span className="card-title">Top Spending Categories</span>
-                            <span className="card-link" onClick={() => onNavigate?.("budget")} style={{ cursor: "pointer" }}>
+                            <span className="card-link" onClick={() => onNavigate?.("budget")}>
                                 View budget →
                             </span>
                         </div>
-                        <div style={{ padding: '16px 0' }}>
+                        <div className="category-list">
                             {data.expenseCategories.slice(0, 5).map((category, index) => (
-                                <div key={category.type} style={{ 
-                                    display: 'flex', 
-                                    justifyContent: 'space-between', 
-                                    alignItems: 'center',
-                                    padding: '8px 0',
-                                    borderBottom: index < 4 ? '1px solid #f0f0f0' : 'none'
-                                }}>
-                                    <div>
-                                        <div style={{ fontWeight: 500 }}>{category.type}</div>
-                                        <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                                <div key={category.type} className="category-item">
+                                    <div className="category-info">
+                                        <div className="category-name">{category.type}</div>
+                                        <div className="category-meta">
                                             {category.count || 1} transaction{category.count !== 1 ? 's' : ''}
                                         </div>
                                     </div>
-                                    <div style={{ 
-                                        fontSize: 16, 
-                                        fontWeight: 600, 
-                                        color: '#cf1322' 
-                                    }}>
+                                    <div className="category-amount">
                                         ${formatMoney(category.amount)}
                                     </div>
                                 </div>

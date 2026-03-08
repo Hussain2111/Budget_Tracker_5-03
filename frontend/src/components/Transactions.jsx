@@ -140,15 +140,7 @@ const TransactionForm = ({ form, categories, kind }) => {
       </Form.Item>
 
       {/* ── Recurring toggle ── */}
-      <div
-        style={{
-          background: "#fafafa",
-          border: "1px solid #f0f0f0",
-          borderRadius: 8,
-          padding: "12px 14px",
-          marginBottom: 0,
-        }}
-      >
+      <div className="recurring-toggle">
         <Form.Item
           name="isRecurring"
           valuePropName="checked"
@@ -162,14 +154,7 @@ const TransactionForm = ({ form, categories, kind }) => {
 
         {isRecurring && (
           <>
-            <div
-              style={{
-                fontSize: 12,
-                color: "#8c8c8c",
-                marginBottom: 10,
-                marginTop: -6,
-              }}
-            >
+            <div className="recurring-description">
               This transaction will be automatically recreated each month when
               you log in.
             </div>
@@ -399,18 +384,11 @@ const TransactionTab = ({ kind, service, categories, onImported }) => {
   return (
     <div>
       {/* Action bar */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ fontSize: 13, color: "#8c8c8c" }}>
+      <div className="transaction-actions">
+        <div className="recurring-indicator">
           {data.filter((d) => d.isRecurring).length > 0 && (
             <span>
-              <SyncOutlined style={{ marginRight: 5, color: "#1890ff" }} />
+              <SyncOutlined />
               {data.filter((d) => d.isRecurring).length} recurring template
               {data.filter((d) => d.isRecurring).length !== 1 ? "s" : ""} active
             </span>
@@ -427,10 +405,7 @@ const TransactionTab = ({ kind, service, categories, onImported }) => {
             type="primary"
             icon={<PlusOutlined />}
             onClick={openAdd}
-            style={{
-              background: isExpense ? "#ff4d4f" : "#52c41a",
-              borderColor: isExpense ? "#ff4d4f" : "#52c41a",
-            }}
+            className={`btn-${isExpense ? "expense" : "income"}`}
           >
             Add {kind}
           </Button>
@@ -438,19 +413,7 @@ const TransactionTab = ({ kind, service, categories, onImported }) => {
       </div>
 
       {/* Filters */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: 16,
-          flexWrap: "wrap",
-          alignItems: "center",
-          padding: "12px 16px",
-          background: "#fafafa",
-          borderRadius: 8,
-          border: "1px solid #f0f0f0",
-        }}
-      >
+      <div className="transaction-filters">
         <Input
           placeholder="Search by name, category, description..."
           prefix={<SearchOutlined style={{ color: "#9CA3AF" }} />}
@@ -512,19 +475,12 @@ const TransactionTab = ({ kind, service, categories, onImported }) => {
           pagination={{ pageSize: 10, showSizeChanger: true }}
           scroll={{ x: "max-content" }}
           footer={() => (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontWeight: 600,
-                color: "#374151",
-              }}
-            >
+            <div className="table-footer">
               <span>
                 {filteredData.length} transaction
                 {filteredData.length !== 1 ? "s" : ""}
               </span>
-              <span style={{ color: isExpense ? "#cf1322" : "#3f8600" }}>
+              <span className={`table-footer-total${isExpense ? " expense" : ""}`}>
                 Total: $
                 {filteredData
                   .reduce((sum, r) => sum + Number(r.amount || 0), 0)
@@ -549,10 +505,7 @@ const TransactionTab = ({ kind, service, categories, onImported }) => {
         }}
         okText={editRecord ? "Save Changes" : `Add ${kind}`}
         okButtonProps={{
-          style: {
-            background: isExpense ? "#ff4d4f" : "#52c41a",
-            borderColor: isExpense ? "#ff4d4f" : "#52c41a",
-          },
+          className: `btn-${isExpense ? "expense" : "income"}`,
         }}
         destroyOnClose
       >

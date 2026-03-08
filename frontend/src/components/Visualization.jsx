@@ -286,8 +286,8 @@ const incomePieConfig = {
     return (
         <div style={{ padding: 20 }}>
             <Card style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
-                    <div style={{ fontWeight: 600, fontSize: 16 }}>Budget Visualization</div>
+                <div className="viz-header">
+                    <div className="viz-title">Budget Visualization</div>
                     <DatePicker
                         picker="month"
                         value={selectedMonth}
@@ -334,31 +334,14 @@ const incomePieConfig = {
                 {narrativeInsights.length > 0 && (
                     <Col xs={24}>
                         <Card title="What the numbers say" style={{ marginBottom: 8 }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <div className="insights-container">
                                 {narrativeInsights.map((insight, i) => (
                                     <div
                                         key={i}
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "flex-start",
-                                            gap: 12,
-                                            padding: "12px 16px",
-                                            borderRadius: 8,
-                                            background:
-                                                insight.type === "success" ? "#f6ffed" :
-                                                insight.type === "warning" ? "#fffbe6" :
-                                                insight.type === "error" ? "#fff2f0" :
-                                                "#f0f5ff",
-                                            borderLeft: `3px solid ${
-                                                insight.type === "success" ? "#52c41a" :
-                                                insight.type === "warning" ? "#faad14" :
-                                                insight.type === "error" ? "#ff4d4f" :
-                                                "#1890ff"
-                                            }`,
-                                        }}
+                                        className={`insight-card ${insight.type}`}
                                     >
-                                        <span style={{ fontSize: 18, flexShrink: 0 }}>{insight.icon}</span>
-                                        <span style={{ fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
+                                        <span className="insight-icon">{insight.icon}</span>
+                                        <span className="insight-text">
                                             {insight.text}
                                         </span>
                                     </div>

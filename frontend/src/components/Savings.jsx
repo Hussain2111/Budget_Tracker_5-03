@@ -256,7 +256,7 @@ const Savings = () => {
                     }).length;
 
                     return (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                        <div className="savings-grid">
                             <div>
                                 <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>Total Saved</div>
                                 <div style={{ fontSize: 20, fontWeight: 600 }}>${formatMoney(totalSaved)}</div>
@@ -278,17 +278,17 @@ const Savings = () => {
                 })()}
             </Card>
 
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 16 }} className="form-actions">
                 <Button type="primary" onClick={handleAdd}>
                     + Add Savings Goal
                 </Button>
             </div>
 
             {goals.length === 0 && !loading ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                    <div style={{ fontSize: 48, marginBottom: 16 }}>🏦</div>
-                    <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No savings goals yet</div>
-                    <div style={{ color: '#999', marginBottom: 24 }}>
+                <div className="empty-state">
+                    <div className="empty-state-icon">🏦</div>
+                    <div className="empty-state-title">No savings goals yet</div>
+                    <div className="empty-state-description">
                         Set a goal — a holiday, an emergency fund, a new laptop — and track your progress toward it.
                     </div>
                     <Button type="primary" onClick={handleAdd}>+ Add Savings Goal</Button>
@@ -383,10 +383,10 @@ const Savings = () => {
             >
                 <Spin spinning={loadingContributions}>
                     {contributions.length === 0 && !loadingContributions ? (
-                        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                            <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
-                            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>No contributions yet</div>
-                            <div style={{ color: '#999' }}>
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📭</div>
+                            <div className="empty-state-title">No contributions yet</div>
+                            <div className="empty-state-description">
                                 Use the Contribute button to start building toward this goal.
                             </div>
                         </div>
