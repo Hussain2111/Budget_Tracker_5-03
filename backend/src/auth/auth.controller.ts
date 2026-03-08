@@ -1,8 +1,23 @@
-import {Controller, Post, Body, Get, UseGuards, Req, Res} from "@nestjs/common";
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Req,
+  Res,
+  Query,
+} from "@nestjs/common";
 import { AuthService } from "./auth.service";
-import { RegisterDto, LoginDto } from "./dto/create-auth.dto";
+import {
+  RegisterDto,
+  LoginDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
+} from "./dto/create-auth.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
-import {AuthGuard} from "@nestjs/passport";
+import { AuthGuard } from "@nestjs/passport";
 import type { Response } from "express";
 
 @Controller("auth")
@@ -10,13 +25,33 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("register")
-  register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
   }
 
   @Post("login")
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
+  }
+
+  @Post("verify-email")
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto);
+  }
+
+  @Post("resend-verification")
+  resendVerification(@Body("email") email: string) {
+    return this.authService.resendVerification(email);
+  }
+
+  @Post("forgot-password")
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post("reset-password")
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -33,18 +68,15 @@ export class AuthController {
 
   @Get("google")
   @UseGuards(AuthGuard("google"))
-  async googleAuth() {
-    // Passport redirect
-  }
+  async googleAuth() {}
 
   @Get("google/callback")
   @UseGuards(AuthGuard("google"))
   async googleCallback(@Req() req: any, @Res() res: Response) {
     const result = await this.authService.loginWithGoogle(req.user);
-
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-    const redirectUrl = `${frontendUrl}/?token=${encodeURIComponent(result.access_token)}`;
-
-    return res.redirect(redirectUrl);
+    return res.redirect(
+      `${frontendUrl}/?token=${encodeURIComponent(result.access_token)}`,
+    );
   }
 }

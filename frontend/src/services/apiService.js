@@ -41,6 +41,8 @@ export const authService = {
   register: (data) => api.post("/auth/register", data),
   login: (data) => api.post("/auth/login", data),
   profile: () => api.get("/auth/profile"),
+  verifyEmail: (token) => api.post("/auth/verify-email", { token }),
+  resendVerification: (email) => api.post("/auth/resend-verification", { email }),
 };
 
 export const expenseService = {

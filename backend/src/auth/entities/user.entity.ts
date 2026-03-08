@@ -23,6 +23,23 @@ export class User {
   @Column({ nullable: true, unique: true })
   googleId?: string;
 
+  // ── Email verification ────────────────────────────────────────
+  @Column({ default: false })
+  isEmailVerified: boolean;
+
+  @Column({ nullable: true })
+  emailVerificationToken?: string;
+
+  @Column({ nullable: true, type: "timestamptz" })
+  emailVerificationExpires?: Date;
+
+  // ── Password reset ────────────────────────────────────────────
+  @Column({ nullable: true })
+  passwordResetToken?: string;
+
+  @Column({ nullable: true, type: "timestamptz" })
+  passwordResetExpires?: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

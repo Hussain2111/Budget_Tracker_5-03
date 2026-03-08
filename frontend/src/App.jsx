@@ -1,241 +1,230 @@
 import { useState, useEffect } from "react";
-import { Spin, message } from "antd";
-import {
-  DashboardOutlined,
-  SwapOutlined,
-  WalletOutlined,
-  BankOutlined,
-  BarChartOutlined,
-  HistoryOutlined,
-  InfoCircleOutlined,
-  CalendarOutlined,
-  DownOutlined,
-} from "@ant-design/icons";
+import "./App.css";
+
+// Pages
+import Landing from "./pages/Landing";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
+
+// App Shell
+import Sidebar from "./components/Sidebar";
+
+// Inner pages (lazy-loaded via dynamic import pattern — just import all for now)
+import Dashboard from "./components/Dashboard";
 import Transactions from "./components/Transactions";
 import Savings from "./components/Savings";
 import Budget from "./components/Budget";
 import Visualization from "./components/Visualization";
-import MonthlyHistory from "./components/MonthlyHistory";
-import Dashboard from "./components/Dashboard.jsx";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import { authService } from "./services/apiService";
-import "./App.css";
+import Summary from "./components/MonthlyHistory";
 
-const NAVIGATION_ITEMS = [
-  { key: "dashboard", icon: <DashboardOutlined />, label: "Dashboard" },
-  { key: "transactions", icon: <SwapOutlined />, label: "Transactions" },
-  { key: "budget", icon: <WalletOutlined />, label: "Budget" },
-  { key: "savings", icon: <BankOutlined />, label: "Savings" },
-  { key: "visualization", icon: <BarChartOutlined />, label: "Visualization" },
-  { key: "summary", icon: <HistoryOutlined />, label: "Summary" },
-];
-
-const getComponent = (key, onNavigate) => {
-  switch (key) {
-    case "dashboard":
-      return <Dashboard onNavigate={onNavigate} />;
-    case "transactions":
-      return <Transactions />;
-    case "savings":
-      return <Savings />;
-    case "budget":
-      return <Budget />;
-    case "visualization":
-      return <Visualization />;
-    case "summary":
-      return <MonthlyHistory onNavigate={onNavigate} />;
-    default:
-      return <Dashboard onNavigate={onNavigate} />;
-  }
+// Page title map
+const PAGE_TITLES = {
+  dashboard:     "Dashboard",
+  transactions:  "Transactions",
+  savings:       "Savings",
+  budget:        "Budget",
+  visualization: "Visualize",
+  summary:       "Summary",
 };
-function App() {
-  const ACTIVE_PAGE = "active_page";
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
+
+function detectRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const path = window.location.pathname;
+  if (path === "/verify-email" || params.has("verify-email")) return "verify-email";
+  if (path === "/reset-password" || params.has("reset-password")) return "reset-password";
+  // Google OAuth callback: ?token=...
+  if (params.get("token") && path === "/") return "oauth-callback";
+  return null;
+}
+
+export default function App() {
+  const [view, setView] = useState("landing"); // landing | login | register | forgot | reset | verify | app
+  const [currentPage, setCurrentPage] = useState("dashboard");
   const [user, setUser] = useState(null);
-  const [currentPage, setCurrentPage] = useState("login");
-  const [activePage, setActivePage] = useState(() => {
-    const activePage = localStorage.getItem("ACTIVE_PAGE");
-    return activePage && ["dashboard", "transactions", "budget", "savings", "visualization", "summary"].includes(activePage) ? activePage : "dashboard";
-  });
-  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    // Handle special URL routes first
+    const specialRoute = detectRoute();
+
+    if (specialRoute === "oauth-callback") {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      localStorage.setItem("access_token", token);
+      // Fetch profile
+      import("./services/apiService").then(({ authService }) => {
+        authService.getProfile()
+          .then((res) => {
+            const u = res.data;
+            localStorage.setItem("user", JSON.stringify(u));
+            setUser(u);
+            setView("app");
+            window.history.replaceState({}, "", "/");
+          })
+          .catch(() => setView("login"));
+      });
+      return;
+    }
+
+    if (specialRoute === "verify-email") {
+      setView("verify-email");
+      return;
+    }
+
+    if (specialRoute === "reset-password") {
+      setView("reset");
+      return;
+    }
+
+    // Check for existing session
+    const token = localStorage.getItem("access_token");
+    const stored = localStorage.getItem("user");
+    if (token && stored) {
+      try {
+        setUser(JSON.parse(stored));
+        setView("app");
+      } catch {
+        setView("landing");
+      }
+    }
+  }, []);
+
+  // Update document title
+  useEffect(() => {
+    if (view === "app") {
+      document.title = `${PAGE_TITLES[currentPage] || "Dashboard"} · Fina`;
+    } else {
+      document.title = "Fina · Personal Finance Tracker";
+    }
+  }, [view, currentPage]);
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    setView("app");
+    window.history.replaceState({}, "", "/");
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("user");
-    localStorage.removeItem("ACTIVE_PAGE");
-    setIsAuthenticated(false);
     setUser(null);
-    setCurrentPage("login");
-    setActivePage("dashboard");
+    setView("landing");
+    window.history.replaceState({}, "", "/");
   };
 
-  useEffect(() => {
-    if (isAuthenticated && activePage && ["dashboard", "transactions", "budget", "savings", "visualization", "summary"].includes(activePage)) {
-      localStorage.setItem(ACTIVE_PAGE, activePage);
-    }
-  }, [activePage, isAuthenticated]);
+  // ── Special routes ──
+  if (view === "verify-email") {
+    return (
+      <VerifyEmail
+        onVerified={() => {
+          const stored = localStorage.getItem("user");
+          if (stored) {
+            setUser(JSON.parse(stored));
+            setView("app");
+          } else {
+            setView("login");
+          }
+          window.history.replaceState({}, "", "/");
+        }}
+        onBack={() => {
+          setView("login");
+          window.history.replaceState({}, "", "/");
+        }}
+      />
+    );
+  }
 
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const tokenFromUrl = url.searchParams.get("token");
-    if (tokenFromUrl) {
-      localStorage.setItem("access_token", tokenFromUrl);
+  if (view === "reset") {
+    return (
+      <ResetPassword
+        onSuccess={() => {
+          setView("login");
+          window.history.replaceState({}, "", "/");
+        }}
+        onBack={() => {
+          setView("forgot");
+          window.history.replaceState({}, "", "/");
+        }}
+      />
+    );
+  }
 
-      url.searchParams.delete("token");
-      window.history.replaceState({}, "", url.toString());
-    }
+  // ── Landing / Auth ──
+  if (view === "landing") {
+    return (
+      <Landing
+        onGetStarted={() => setView("register")}
+        onLogin={() => setView("login")}
+      />
+    );
+  }
 
-    const boot = async () => {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        setAuthChecked(true);
-        setIsAuthenticated(false);
-        setUser(null);
-        setCurrentPage("login");
-        return;
-      }
+  if (view === "login") {
+    return (
+      <Login
+        onLoginSuccess={handleLoginSuccess}
+        onSwitchToRegister={() => setView("register")}
+        onForgotPassword={() => setView("forgot")}
+      />
+    );
+  }
 
-      try {
-        const res = await authService.profile();
-        setUser(res.data);
-        localStorage.setItem("user", JSON.stringify(res.data));
-        setIsAuthenticated(true);
-        setCurrentPage("app");
+  if (view === "register") {
+    return (
+      <Register
+        onRegisterSuccess={() => setView("login")}
+        onSwitchToLogin={() => setView("login")}
+      />
+    );
+  }
 
-        const activePage = localStorage.getItem("ACTIVE_PAGE");
-        if (activePage && ["dashboard", "transactions", "budget", "savings", "visualization", "summary"].includes(activePage)) {
-          setActivePage(activePage);
-        }
-      } catch (e) {
-        handleLogout();
-      } finally {
-        setAuthChecked(true);
+  if (view === "forgot") {
+    return (
+      <ForgotPassword onBack={() => setView("login")} />
+    );
+  }
+
+  // ── App Shell ──
+  if (view === "app") {
+    const renderPage = () => {
+      switch (currentPage) {
+        case "dashboard":     return <Dashboard user={user} />;
+        case "transactions":  return <Transactions />;
+        case "savings":       return <Savings />;
+        case "budget":        return <Budget />;
+        case "visualization": return <Visualization />;
+        case "summary":       return <Summary />;
+        default:              return <Dashboard user={user} />;
       }
     };
 
-    boot();
-
-  }, []);
-
-  const handleLoginSuccess = (userData) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-    setCurrentPage("app");
-
-    const activePage = localStorage.getItem("ACTIVE_PAGE");
-    if (activePage && ["dashboard", "transactions", "budget", "savings", "visualization", "summary"].includes(activePage)) {
-      setActivePage(activePage);
-    }
-    else {
-      setActivePage("dashboard");
-    }
-  };
-
-  const handleRegisterSuccess = (userData) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-    setCurrentPage("app");
-
-    const activePage = localStorage.getItem("ACTIVE_PAGE");
-    if (activePage && ["dashboard", "transactions", "budget", "savings", "visualization", "summary"].includes(activePage)) {
-      setActivePage(activePage);
-    }
-    else {
-      setActivePage("dashboard");
-    }
-  };
-
-  if (!authChecked) {
     return (
-        <div style={{ height: "100vh", display: "grid", placeItems: "center" }}>
-          <Spin size="large" />
-        </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    if (currentPage === "login") {
-      return (
-          <Login
-              onLoginSuccess={handleLoginSuccess}
-              onSwitchToRegister={() => setCurrentPage("register")}
-          />
-      );
-    }
-    return (
-        <Register
-            onRegisterSuccess={handleRegisterSuccess}
-            onSwitchToLogin={() => setCurrentPage("login")}
+      <div className="app-layout">
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={setCurrentPage}
+          user={user}
+          onLogout={handleLogout}
         />
+        <main className="main">
+          <div className="topbar">
+            <span className="topbar-title">{PAGE_TITLES[currentPage]}</span>
+            <div className="topbar-right">
+              <div className="topbar-pill">
+                <span style={{ fontSize: 11 }}>🌿</span>
+                {user?.username}
+              </div>
+            </div>
+          </div>
+          <div className="page-content">
+            {renderPage()}
+          </div>
+        </main>
+      </div>
     );
   }
 
-  // Navigation handler for components
-  const handleNavigate = (page) => {
-    setActivePage(page);
-  };
-
-  return (
-    <div className="app-layout">
-      {/* Sidebar */}
-      <div className="sidebar">
-        <div className="sidebar-logo">
-          <div className="logo-mark">
-            <svg viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
-            </svg>
-          </div>
-          <span className="logo-name">Budget Tracker</span>
-        </div>
-        <nav className="sidebar-nav">
-          {NAVIGATION_ITEMS.map((item) => (
-            <div
-              key={item.key}
-              className={`nav-item ${activePage === item.key ? "active" : ""}`}
-              onClick={() => setActivePage(item.key)}
-            >
-              {item.icon}
-              {item.label}
-            </div>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <div className="avatar">
-            {user?.username ? user.username.substring(0, 2).toUpperCase() : "JS"}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div className="sidebar-user-name">{user?.username || "Jamie S."}</div>
-            <div className="sidebar-user-plan">Personal</div>
-          </div>
-          <div
-              onClick={handleLogout}
-              title="Log out"
-              style={{
-                  cursor: "pointer",
-                  color: "rgba(255,255,255,0.35)",
-                  fontSize: 16,
-                  flexShrink: 0,
-                  transition: "color 0.15s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.8)"}
-              onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.35)"}
-          >
-              ⎋
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="main">
-
-        <div className="page-content">
-          {getComponent(activePage, handleNavigate)}
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
-
-export default App;

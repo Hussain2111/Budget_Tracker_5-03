@@ -9,6 +9,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JWT_SECRET } from '../jwt.constants';
 import { RecurringModule } from '../recurring/recurring.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { RecurringModule } from '../recurring/recurring.module';
       signOptions: { expiresIn: '7d' },
     }),
     forwardRef(() => RecurringModule),
+    EmailModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtAuthGuard],
