@@ -5,6 +5,7 @@ import {
   Target,
   BarChart2,
   FileText,
+  Settings,
   LogOut,
   Leaf,
   X,
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
   { key: "budget",        label: "Budget",        icon: Target },
   { key: "visualization", label: "Visualize",     icon: BarChart2 },
   { key: "summary",       label: "Summary",       icon: FileText },
+  { key: "settings",      label: "Settings",      icon: Settings },
 ];
 
 export default function Sidebar({ currentPage, onNavigate, user, onLogout, className, onClose }) {

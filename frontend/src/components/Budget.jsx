@@ -7,9 +7,11 @@ import {
 import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { dashboardService, ledgerService, budgetService } from "../services/apiService";
+import { useCurrency } from "../CurrencyContext";
 import EmptyState from "./EmptyState";
 
 const Budget = () => {
+    const { baseCurrency, format } = useCurrency();
     const currentMonth = useMemo(() => dayjs(), []);
     const [selectedMonth, setSelectedMonth] = useState(() => {
         const stored = localStorage.getItem("selectedMonthForBudget");
@@ -156,8 +158,8 @@ const Budget = () => {
                         <Spin spinning={loadingSummary}>
                             <Statistic
                                 title="Total Income"
-                                value={formatMoney(monthlySummary?.totalIncome)}
-                                prefix="$"
+                                value={format(monthlySummary?.totalIncome)}
+                                prefix={baseCurrency.symbol}
                                 valueStyle={{ color: "#3f8600" }}
                             />
                         </Spin>
@@ -168,8 +170,8 @@ const Budget = () => {
                         <Spin spinning={loadingSummary}>
                             <Statistic
                                 title="Total Expenses"
-                                value={formatMoney(monthlySummary?.totalExpenses)}
-                                prefix="$"
+                                value={format(monthlySummary?.totalExpenses)}
+                                prefix={baseCurrency.symbol}
                                 valueStyle={{ color: "#cf1322" }}
                             />
                         </Spin>
@@ -180,8 +182,8 @@ const Budget = () => {
                         <Spin spinning={loadingSummary}>
                             <Statistic
                                 title="Net Savings"
-                                value={formatMoney(savingsValue)}
-                                prefix="$"
+                                value={format(savingsValue)}
+                                prefix={baseCurrency.symbol}
                                 valueStyle={{ color: savingsValue < 0 ? "#cf1322" : "#3f8600" }}
                             />
                         </Spin>
@@ -243,8 +245,8 @@ const Budget = () => {
                                                     </div>
                                                     <div style={{ fontSize: 12, color: "#8c8c8c", marginBottom: 12 }}>
                                                         {budget
-                                                            ? `$${formatMoney(spent)} of $${formatMoney(limit)}` 
-                                                            : `$${formatMoney(spent)} spent`}
+                                                            ? `${baseCurrency.symbol}${formatMoney(spent)} of ${baseCurrency.symbol}${formatMoney(limit)}` 
+                                                            : `${baseCurrency.symbol}${formatMoney(spent)} spent`}
                                                     </div>
                                                     {budget ? (
                                                         <>
@@ -310,7 +312,7 @@ const Budget = () => {
                         <InputNumber
                             min={0.01}
                             step={0.01}
-                            prefix="$"
+                            prefix={baseCurrency.symbol}
                             style={{ width: "100%" }}
                             placeholder="0.00"
                         />

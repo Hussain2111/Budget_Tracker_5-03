@@ -1,5 +1,6 @@
 import { Card, Empty } from "antd";
 import { BulbOutlined } from "@ant-design/icons";
+import { useCurrency } from "../../CurrencyContext";
 
 /**
  * SpotlightInsight - Generates a single compelling insight sentence
@@ -22,6 +23,7 @@ export const SpotlightInsight = ({
     selectedMonth,
     formatMoney,
 }) => {
+    const { baseCurrency } = useCurrency();
     let insightText = null;
     let insightType = "default"; // success, warning, error
 
@@ -36,13 +38,13 @@ export const SpotlightInsight = ({
     if (isOnPaceToOverspend && monthlyData && monthlyData.totalIncome > 0) {
         // Overspend warning is highest priority
         const projectedSpending = (Number(monthlyData.totalExpenses || 0) / today) * daysInMonth;
-        insightText = `On pace to spend $${formatMoney(projectedSpending)} this month — more than expected income.`;
+        insightText = `On pace to spend ${baseCurrency.symbol}${formatMoney(projectedSpending)} this month — more than expected income.`;
         insightType = "warning";
     } else if (topSpendingCategory && monthProgress > 50) {
         // If we're in the latter half of the month and have spending data
         const categoryName = topSpendingCategory.type;
         const categoryAmount = formatMoney(topSpendingCategory.amount);
-        insightText = `${categoryName} is your top expense at $${categoryAmount} this month.`;
+        insightText = `${categoryName} is your top expense at ${baseCurrency.symbol}${categoryAmount} this month.`;
         insightType = "spending";
     } else if (momDelta && Math.abs(momDelta.expenseChangePercent) > 10) {
         // If spending changed significantly month-over-month
@@ -54,7 +56,7 @@ export const SpotlightInsight = ({
         // Fallback: just mention top category
         const categoryName = topSpendingCategory.type;
         const categoryAmount = formatMoney(topSpendingCategory.amount);
-        insightText = `${categoryName} is your top expense at $${categoryAmount} this month.`;
+        insightText = `${categoryName} is your top expense at ${baseCurrency.symbol}${categoryAmount} this month.`;
         insightType = "default";
     }
 

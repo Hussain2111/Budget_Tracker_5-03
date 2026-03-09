@@ -1,4 +1,5 @@
 import { Card, Progress, Row, Col, Statistic, Alert } from "antd";
+import { useCurrency } from "../../CurrencyContext";
 
 /**
  * BudgetPaceCard - Shows spending progress vs typical monthly average
@@ -15,6 +16,7 @@ export const BudgetPaceCard = ({
     selectedMonth,
     formatMoney,
 }) => {
+    const { baseCurrency } = useCurrency();
     if (!monthlyData || !historicalData) {
         return null;
     }
@@ -65,13 +67,13 @@ export const BudgetPaceCard = ({
                     <Col span={12}>
                         <div style={{ fontSize: 11, color: "rgba(0,0,0,0.65)", marginBottom: 4 }}>Projected Spending</div>
                         <div style={{ fontSize: 20, color: "#cf1322", fontWeight: 600 }}>
-                            ${formatMoney(projectedSpending)}
+                            {baseCurrency.symbol}{formatMoney(projectedSpending)}
                         </div>
                     </Col>
                     <Col span={12}>
                         <div style={{ fontSize: 11, color: "rgba(0,0,0,0.65)", marginBottom: 4 }}>Projected Income</div>
                         <div style={{ fontSize: 20, color: "#3f8600", fontWeight: 600 }}>
-                            ${formatMoney(projectedIncome)}
+                            {baseCurrency.symbol}{formatMoney(projectedIncome)}
                         </div>
                     </Col>
                 </Row>
@@ -91,7 +93,7 @@ export const BudgetPaceCard = ({
                     <div style={{ fontSize: 11, color: "rgba(0,0,0,0.65)", marginBottom: 8 }}>
                         Budget Utilization
                         {avgMonthlySpending > 0 
-                            ? ` (vs typical month: $${formatMoney(avgMonthlySpending)})` 
+                            ? ` (vs typical month: {baseCurrency.symbol}{formatMoney(avgMonthlySpending)})` 
                             : ` (vs current income)`}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -105,7 +107,7 @@ export const BudgetPaceCard = ({
                         <div style={{ fontSize: 12 }}>
                             <div style={{ fontSize: 11, color: "rgba(0,0,0,0.65)" }}>Current Spending</div>
                             <div style={{ fontSize: 16, color: "#cf1322", fontWeight: 600 }}>
-                                ${formatMoney(currentSpending)}
+                                {baseCurrency.symbol}{formatMoney(currentSpending)}
                             </div>
                         </div>
                     </div>
@@ -116,8 +118,8 @@ export const BudgetPaceCard = ({
             {isOutpacing && (
                 <Alert
                     message="Spending on track to exceed income"
-                    description={`At current pace, you'll spend $${formatMoney(projectedSpending)} 
-                    but only earn $${formatMoney(projectedIncome)} this month.`}
+                    description={`At current pace, you'll spend ${baseCurrency.symbol}{formatMoney(projectedSpending)} 
+                    but only earn ${baseCurrency.symbol}{formatMoney(projectedIncome)} this month.`}
                     type="warning"
                     showIcon
                     style={{ fontSize: 12 }}

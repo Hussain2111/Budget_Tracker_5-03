@@ -16,6 +16,7 @@ import {
   Switch,
   Tooltip,
   message,
+  Spin,
 } from "antd";
 import {
   PlusOutlined,
@@ -26,6 +27,8 @@ import {
   SyncOutlined,
 } from "@ant-design/icons";
 import { expenseService, incomeService } from "../services/apiService";
+import { getRates } from "../services/exchangeRateService";
+import { useCurrency } from "../CurrencyContext";
 import dayjs from "dayjs";
 
 const { RangePicker } = DatePicker;
@@ -55,7 +58,52 @@ const INCOME_CATEGORIES = [
 
 // ── Transaction Form ─────────────────────────────────────────────
 const TransactionForm = ({ form, categories, kind }) => {
+  const { baseCurrency, currencies, convert } = useCurrency();
   const isRecurring = Form.useWatch("isRecurring", form);
+  const selectedCurrency = Form.useWatch("currency", form) || baseCurrency.code;
+  const amount = Form.useWatch("amount", form) || 0;
+  const exchangeRate = Form.useWatch("exchangeRate", form) || 1.0;
+  const [loadingRate, setLoadingRate] = useState(false);
+
+  // Currency options for dropdown
+  const currencyOptions = Object.values(currencies).map((currency) => ({
+    label: `${currency.symbol} ${currency.code} - ${currency.name}`,
+    value: currency.code,
+  }));
+
+  // Fetch exchange rate when currency changes
+  useEffect(() => {
+    const fetchExchangeRate = async () => {
+      if (selectedCurrency === baseCurrency.code) {
+        // Base currency - set rate to 1.0
+        form.setFieldsValue({ exchangeRate: 1.0 });
+        return;
+      }
+
+      setLoadingRate(true);
+      try {
+        const rates = await getRates(baseCurrency.code);
+        const rate = rates[selectedCurrency];
+        if (rate) {
+          form.setFieldsValue({ exchangeRate: rate });
+        }
+      } catch (error) {
+        console.error('Failed to fetch exchange rate:', error);
+        message.error('Failed to fetch exchange rate. Please enter manually.');
+        // Default to 1.0 with warning
+        form.setFieldsValue({ exchangeRate: 1.0 });
+      } finally {
+        setLoadingRate(false);
+      }
+    };
+
+    if (selectedCurrency) {
+      fetchExchangeRate();
+    }
+  }, [selectedCurrency, baseCurrency.code, form]);
+
+  // Calculate converted amount for preview
+  const convertedAmount = convert(amount, exchangeRate);
 
   return (
     <>
@@ -87,22 +135,103 @@ const TransactionForm = ({ form, categories, kind }) => {
       </Form.Item>
 
       <Form.Item
-        label="Amount ($)"
+        label="Currency"
+        name="currency"
+        initialValue={baseCurrency.code}
+        rules={[{ required: true, message: "Please select a currency" }]}
+      >
+        <Select
+          placeholder="Select currency"
+          options={currencyOptions}
+          showSearch
+          filterOption={(input, option) =>
+            option.label.toLowerCase().includes(input.toLowerCase())
+          }
+        />
+      </Form.Item>
+
+      <Form.Item
+        label={`Amount (${currencies[selectedCurrency]?.symbol || "$"})`}
         name="amount"
         rules={[
           { required: true, message: "Amount is required" },
-          { type: "number", min: 0.01, message: "Amount must be greater than $0.00" },
+          { type: "number", min: 0.01, message: "Amount must be greater than 0" },
         ]}
       >
         <InputNumber
           min={0.01}
           step={0.01}
           precision={2}
-          prefix="$"
+          prefix={currencies[selectedCurrency]?.symbol || "$"}
           style={{ width: "100%" }}
           placeholder="0.00"
         />
       </Form.Item>
+
+      {/* Exchange rate field - only show for non-base currencies */}
+      {selectedCurrency !== baseCurrency.code && (
+        <>
+          <Form.Item
+            label={
+              <Space>
+                Exchange Rate
+                <Tooltip title={`1 ${selectedCurrency} = ? ${baseCurrency.code}`}>
+                  <span style={{ fontSize: 12, color: "#666" }}>ⓘ</span>
+                </Tooltip>
+              </Space>
+            }
+            name="exchangeRate"
+            rules={[
+              { required: true, message: "Exchange rate is required" },
+              { type: "number", min: 0.0001, message: "Exchange rate must be greater than 0" },
+            ]}
+          >
+            <InputNumber
+              min={0.0001}
+              step={0.0001}
+              precision={4}
+              style={{ width: "100%" }}
+              placeholder="1.0000"
+              addonAfter={loadingRate ? <Spin size="small" /> : null}
+            />
+          </Form.Item>
+          
+          {/* Warning for manual rate entry */}
+          {!loadingRate && form.getFieldValue('exchangeRate') === 1.0 && selectedCurrency !== baseCurrency.code && (
+            <div style={{
+              marginBottom: 16,
+              padding: 8,
+              backgroundColor: '#fff7e6',
+              border: '1px solid #ffd591',
+              borderRadius: 4,
+              fontSize: 12,
+              color: '#d46b08'
+            }}>
+              <strong>⚠️ Manual Entry Required:</strong> Could not fetch exchange rate automatically. 
+              Please verify and enter the correct rate manually.
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Conversion preview */}
+      {selectedCurrency !== baseCurrency.code && amount > 0 && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 8,
+            backgroundColor: "#f5f5f5",
+            borderRadius: 4,
+            fontSize: 12,
+            color: "#666",
+          }}
+        >
+          <strong>Conversion Preview:</strong>{" "}
+          {currencies[selectedCurrency]?.symbol}
+          {amount.toFixed(2)} = {baseCurrency.symbol}
+          {convertedAmount.toFixed(2)}
+        </div>
+      )}
 
       <Form.Item
         label="Date"
@@ -114,7 +243,7 @@ const TransactionForm = ({ form, categories, kind }) => {
               if (!value || value.isBefore(dayjs().add(1, "day"))) {
                 return Promise.resolve();
               }
-              return Promise.reject(new Error("Date cannot be in the future"));
+              return Promise.reject(new Error("Date cannot be in future"));
             },
           }),
         ]}
@@ -178,7 +307,7 @@ const TransactionForm = ({ form, categories, kind }) => {
 };
 
 // ── Column factory ───────────────────────────────────────────────
-const makeColumns = (onEdit, onDelete) => [
+const makeColumns = (onEdit, onDelete, baseCurrency, currencies, convert) => [
   {
     title: "Name",
     dataIndex: "name",
@@ -219,9 +348,24 @@ const makeColumns = (onEdit, onDelete) => [
     key: "amount",
     align: "right",
     sorter: (a, b) => Number(a.amount) - Number(b.amount),
-    render: (amt) => (
-      <span style={{ fontWeight: 600 }}>${parseFloat(amt).toFixed(2)}</span>
-    ),
+    render: (amt, record) => {
+      const currency = currencies[record.currency] || currencies.USD;
+      const convertedAmount = convert(Number(amt), Number(record.exchangeRate ?? 1.0));
+      const isForeignCurrency = record.currency && record.currency !== baseCurrency.code;
+      
+      return (
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontWeight: 600 }}>
+            {currency.symbol}{parseFloat(amt).toFixed(2)}
+          </div>
+          {isForeignCurrency && (
+            <div style={{ fontSize: 11, color: '#666' }}>
+              ≈ {baseCurrency.symbol}{convertedAmount.toFixed(2)}
+            </div>
+          )}
+        </div>
+      );
+    },
   },
   {
     title: "Date",
@@ -262,6 +406,7 @@ const makeColumns = (onEdit, onDelete) => [
 
 // ── Transaction Tab ──────────────────────────────────────────────
 const TransactionTab = ({ kind, service, categories, onImported }) => {
+  const { baseCurrency, currencies, convert, format } = useCurrency();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -329,6 +474,8 @@ const TransactionTab = ({ kind, service, categories, onImported }) => {
     form.setFieldsValue({
       ...record,
       date: dayjs(record.date),
+      currency: record.currency || baseCurrency.code,
+      exchangeRate: record.exchangeRate || 1.0,
     });
     setModalOpen(true);
   };
@@ -358,6 +505,9 @@ const TransactionTab = ({ kind, service, categories, onImported }) => {
       date: values.date.format("YYYY-MM-DD"),
       isRecurring: values.isRecurring || false,
       recurringFrequency: values.isRecurring ? values.recurringFrequency : undefined,
+      // Include currency and exchange rate
+      currency: values.currency || baseCurrency.code,
+      exchangeRate: values.exchangeRate || 1.0,
     };
 
     try {
@@ -469,7 +619,7 @@ const TransactionTab = ({ kind, service, categories, onImported }) => {
         />
       ) : (
         <Table
-          columns={makeColumns(openEdit, handleDelete)}
+          columns={makeColumns(openEdit, handleDelete, baseCurrency, currencies, convert)}
           dataSource={filteredData.map((d) => ({ ...d, key: d.id }))}
           loading={loading}
           pagination={{ pageSize: 10, showSizeChanger: true }}
@@ -481,13 +631,11 @@ const TransactionTab = ({ kind, service, categories, onImported }) => {
                 {filteredData.length !== 1 ? "s" : ""}
               </span>
               <span className={`table-footer-total${isExpense ? " expense" : ""}`}>
-                Total: $
-                {filteredData
-                  .reduce((sum, r) => sum + Number(r.amount || 0), 0)
-                  .toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                Total: {format(
+                  filteredData.reduce((sum, r) => 
+                    sum + convert(Number(r.amount || 0), Number(r.exchangeRate ?? 1.0)), 0
+                  )
+                )}
               </span>
             </div>
           )}

@@ -40,6 +40,9 @@ export class User {
   @Column({ nullable: true, type: "timestamptz" })
   passwordResetExpires?: Date;
 
+  @Column({ default: "USD" })
+  baseCurrency: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

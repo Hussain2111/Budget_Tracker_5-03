@@ -33,7 +33,6 @@ export const TrendCard = ({ title, value, deltaPercent, color, borderColor, inve
             <Statistic
                 title={title}
                 value={value}
-                prefix="$"
                 styles={{ content: { color, fontSize: 24 } }}
             />
             {showDelta && (

@@ -41,6 +41,7 @@ export const authService = {
   register: (data) => api.post("/auth/register", data),
   login: (data) => api.post("/auth/login", data),
   profile: () => api.get("/auth/profile"),
+  updateProfile: (data) => api.patch("/auth/profile", data),
   verifyEmail: (token) => api.post("/auth/verify-email", { token }),
   resendVerification: (email) => api.post("/auth/resend-verification", { email }),
 };

@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import dayjs from 'dayjs';
 import { dashboardService } from '../services/apiService';
+import { useCurrency } from '../CurrencyContext';
 
 // Consistent color constants across the app
 const CHART_COLORS = {
@@ -22,6 +23,7 @@ const CHART_COLORS = {
 };
 
 const Visualization = () => {
+    const { baseCurrency, format } = useCurrency();
     const currentMonth = useMemo(() => dayjs(), []);
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
@@ -159,7 +161,7 @@ const Visualization = () => {
                 insights.push({
                     type: "error",
                     icon: "⚠️",
-                    text: `Your expenses exceed your income this month by $${formatMoney(Math.abs(savings))}. Review your spending to get back on track.`,
+                    text: `Your expenses exceed your income this month by ${baseCurrency.symbol}${format(Math.abs(savings))}. Review your spending to get back on track.`,
                 });
             }
         }
@@ -173,7 +175,7 @@ const Visualization = () => {
             insights.push({
                 type: "info",
                 icon: "🏷️",
-                text: `${top.type} is your largest expense category at $${formatMoney(top.value)}, making up ${topPercent}% of total spending.`,
+                text: `${top.type} is your largest expense category at ${baseCurrency.symbol}${format(top.value)}, making up ${topPercent}% of total spending.`,
             });
         }
 
@@ -227,7 +229,7 @@ const expensePieConfig = {
     tooltip: {
         formatter: (datum) => ({
             name: datum.type,
-            value: `$${formatMoney(datum.value)}`,
+            value: `${baseCurrency.symbol}${format(datum.value)}`,
         }),
     },
     statistic: {
@@ -257,7 +259,7 @@ const incomePieConfig = {
     tooltip: {
         formatter: (datum) => ({
             name: datum.type,
-            value: `$${formatMoney(datum.value)}`,
+            value: `${baseCurrency.symbol}${format(datum.value)}`,
         }),
     },
     statistic: {
@@ -274,12 +276,12 @@ const incomePieConfig = {
         color: [CHART_COLORS.EXPENSES, CHART_COLORS.SAVINGS],
         yAxis: {
             label: {
-                formatter: (v) => `$${v}`,
+                formatter: (v) => `${baseCurrency.symbol}${v}`,
             },
         },
         label: {
             position: 'middle',
-            formatter: (datum) => `$${formatMoney(datum.value)}`,
+            formatter: (datum) => `${baseCurrency.symbol}${format(datum.value)}`,
         },
     };
 
@@ -305,7 +307,7 @@ const incomePieConfig = {
                 <Col xs={24} md={8}>
                     <Card>
                         <Spin spinning={loadingMonthly}>
-                            <Statistic title="Monthly Income" value={formatMoney(monthly?.totalIncome)} prefix="$" />
+                            <Statistic title="Monthly Income" value={format(monthly?.totalIncome)} prefix={baseCurrency.symbol} />
                         </Spin>
                     </Card>
                 </Col>
@@ -313,7 +315,7 @@ const incomePieConfig = {
                 <Col xs={24} md={8}>
                     <Card>
                         <Spin spinning={loadingMonthly}>
-                            <Statistic title="Monthly Expenses" value={formatMoney(monthly?.totalExpenses)} prefix="$" />
+                            <Statistic title="Monthly Expenses" value={format(monthly?.totalExpenses)} prefix={baseCurrency.symbol} />
                         </Spin>
                     </Card>
                 </Col>
@@ -323,8 +325,8 @@ const incomePieConfig = {
                         <Spin spinning={loadingMonthly}>
                             <Statistic
                                 title="Monthly Savings"
-                                value={formatMoney(monthly?.monthlySavings)}
-                                prefix="$"
+                                value={format(monthly?.monthlySavings)}
+                                prefix={baseCurrency.symbol}
                                 valueStyle={{ color: savingsColor }}
                             />
                         </Spin>
@@ -393,8 +395,8 @@ const incomePieConfig = {
                             <ResponsiveContainer width="100%" height={300}>
                                 <LineChart data={trendData}>
                                     <XAxis dataKey="month" />
-                                    <YAxis tickFormatter={(v) => `$${v}`} />
-                                    <Tooltip formatter={(value, name) => [`$${formatMoney(value)}`, name]} />
+                                    <YAxis tickFormatter={(v) => `${baseCurrency.symbol}${v}`} />
+                                    <Tooltip formatter={(value, name) => [`${baseCurrency.symbol}${format(value)}`, name]} />
                                     <Legend verticalAlign="bottom" height={36} />
                                     <Line
                                         type="monotone"

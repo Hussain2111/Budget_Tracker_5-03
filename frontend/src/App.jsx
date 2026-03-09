@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 
+// Currency Context
+import { CurrencyProvider } from "./CurrencyContext";
+
 // Pages
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -28,6 +31,8 @@ import Savings from "./components/Savings";
 import Budget from "./components/Budget";
 import Visualization from "./components/Visualization";
 import Summary from "./components/MonthlyHistory";
+import Settings from "./components/Settings";
+import FirstTimeCurrencySetup from "./components/FirstTimeCurrencySetup";
 
 // Page title map
 const PAGE_TITLES = {
@@ -37,6 +42,7 @@ const PAGE_TITLES = {
   budget:        "Budget",
   visualization: "Visualize",
   summary:       "Summary",
+  settings:      "Settings",
 };
 
 // Bottom navigation items
@@ -137,72 +143,84 @@ export default function App() {
   // ── Special routes ──
   if (view === "verify-email") {
     return (
-      <VerifyEmail
-        onVerified={() => {
-          const stored = localStorage.getItem("user");
-          if (stored) {
-            setUser(JSON.parse(stored));
-            setView("app");
-          } else {
+      <CurrencyProvider>
+        <VerifyEmail
+          onVerified={() => {
+            const stored = localStorage.getItem("user");
+            if (stored) {
+              setUser(JSON.parse(stored));
+              setView("app");
+            } else {
+              setView("login");
+            }
+            window.history.replaceState({}, "", "/");
+          }}
+          onBack={() => {
             setView("login");
-          }
-          window.history.replaceState({}, "", "/");
-        }}
-        onBack={() => {
-          setView("login");
-          window.history.replaceState({}, "", "/");
-        }}
-      />
+            window.history.replaceState({}, "", "/");
+          }}
+        />
+      </CurrencyProvider>
     );
   }
 
   if (view === "reset") {
     return (
-      <ResetPassword
-        onSuccess={() => {
-          setView("login");
-          window.history.replaceState({}, "", "/");
-        }}
-        onBack={() => {
-          setView("forgot");
-          window.history.replaceState({}, "", "/");
-        }}
-      />
+      <CurrencyProvider>
+        <ResetPassword
+          onSuccess={() => {
+            setView("login");
+            window.history.replaceState({}, "", "/");
+          }}
+          onBack={() => {
+            setView("forgot");
+            window.history.replaceState({}, "", "/");
+          }}
+        />
+      </CurrencyProvider>
     );
   }
 
   // ── Landing / Auth ──
   if (view === "landing") {
     return (
-      <Landing
-        onGetStarted={() => setView("register")}
-        onLogin={() => setView("login")}
-      />
+      <CurrencyProvider>
+        <Landing
+          onGetStarted={() => setView("register")}
+          onLogin={() => setView("login")}
+        />
+      </CurrencyProvider>
     );
   }
 
   if (view === "login") {
     return (
-      <Login
-        onLoginSuccess={handleLoginSuccess}
-        onSwitchToRegister={() => setView("register")}
-        onForgotPassword={() => setView("forgot")}
-      />
+      <CurrencyProvider>
+        <Login
+          onLoginSuccess={handleLoginSuccess}
+          onSwitchToRegister={() => setView("register")}
+          onForgotPassword={() => setView("forgot")}
+        />
+      </CurrencyProvider>
     );
   }
 
   if (view === "register") {
     return (
-      <Register
-        onRegisterSuccess={() => setView("login")}
-        onSwitchToLogin={() => setView("login")}
-      />
+      <CurrencyProvider>
+        <Register
+          onRegisterSuccess={() => setView("login")}
+          onSwitchToLogin={() => setView("login")}
+        />
+      </CurrencyProvider>
     );
   }
 
   if (view === "forgot") {
     return (
-      <ForgotPassword onBack={() => setView("login")} />
+      <CurrencyProvider>
+        <ForgotPassword onBack={() => setView("login")} />
+      </CurrencyProvider>
     );
   }
 
@@ -216,62 +234,70 @@ export default function App() {
         case "budget":        return <Budget />;
         case "visualization": return <Visualization />;
         case "summary":       return <Summary />;
+        case "settings":      return <Settings />;
         default:              return <Dashboard user={user} />;
       }
     };
 
     return (
-      <div className="app-layout">
-        {/* Sidebar Overlay */}
-        {sidebarOpen && (
-          <div 
-            className="sidebar-overlay" 
-            onClick={() => setSidebarOpen(false)}
+      <CurrencyProvider>
+        <FirstTimeCurrencySetup />
+        <div className="app-layout">
+          {/* Sidebar Overlay */}
+          {sidebarOpen && (
+            <div 
+              className="sidebar-overlay" 
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+          
+          <Sidebar
+            currentPage={currentPage}
+            onNavigate={setCurrentPage}
+            user={user}
+            onLogout={handleLogout}
+            className={sidebarOpen ? "open" : ""}
+            onClose={() => setSidebarOpen(false)}
           />
-        )}
-        
-        <Sidebar
-          currentPage={currentPage}
-          onNavigate={setCurrentPage}
-          user={user}
-          onLogout={handleLogout}
-          className={sidebarOpen ? "open" : ""}
-          onClose={() => setSidebarOpen(false)}
-        />
-        <main className="main">
-          <div className="topbar">
-            <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}>
-              <Menu size={20} />
-            </button>
-            <span className="topbar-title">{PAGE_TITLES[currentPage]}</span>
-            <div className="topbar-right">
-              <div className="topbar-pill">
-                <span style={{ fontSize: 11 }}>🌿</span>
-                {user?.username}
+          <main className="main">
+            <div className="topbar">
+              <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}>
+                <Menu size={20} />
+              </button>
+              <span className="topbar-title">{PAGE_TITLES[currentPage]}</span>
+              <div className="topbar-right">
+                <div className="topbar-pill">
+                  <span style={{ fontSize: 11 }}>🌿</span>
+                  {user?.username}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="page-content">
-            {renderPage()}
-          </div>
-        </main>
-        
-        {/* Bottom Navigation */}
-        <nav className="bottom-nav">
-          {BOTTOM_NAV.map(({ key, label, icon: Icon }) => (
-            <div
-              key={key}
-              className={`bottom-nav-item ${currentPage === key ? "active" : ""}`}
-              onClick={() => setCurrentPage(key)}
-            >
-              <Icon size={20} />
-              <span>{label}</span>
+            <div className="page-content">
+              {renderPage()}
             </div>
-          ))}
-        </nav>
-      </div>
+          </main>
+          
+          {/* Bottom Navigation */}
+          <nav className="bottom-nav">
+            {BOTTOM_NAV.map(({ key, label, icon: Icon }) => (
+              <div
+                key={key}
+                className={`bottom-nav-item ${currentPage === key ? "active" : ""}`}
+                onClick={() => setCurrentPage(key)}
+              >
+                <Icon size={20} />
+                <span>{label}</span>
+              </div>
+            ))}
+          </nav>
+        </div>
+      </CurrencyProvider>
     );
   }
 
-  return null;
+  return (
+    <CurrencyProvider>
+      {null}
+    </CurrencyProvider>
+  );
 }

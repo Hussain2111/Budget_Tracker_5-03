@@ -14,8 +14,10 @@ import {
 } from 'recharts';
 import dayjs from 'dayjs';
 import { dashboardService } from '../services/apiService';
+import { useCurrency } from '../CurrencyContext';
 
 const MonthlyHistory = ({ onNavigate }) => {
+    const { baseCurrency, format } = useCurrency();
     const [months, setMonths] = useState(12);
     const [loading, setLoading] = useState(false);
     const [rows, setRows] = useState([]);
@@ -145,14 +147,14 @@ const MonthlyHistory = ({ onNavigate }) => {
             dataIndex: 'totalIncome',
             key: 'totalIncome',
             align: 'right',
-            render: (v) => `$${formatMoney(v)}`,
+            render: (v) => `${baseCurrency.symbol}${format(v)}`,
         },
         {
             title: 'Expenses',
             dataIndex: 'totalExpenses',
             key: 'totalExpenses',
             align: 'right',
-            render: (v) => `$${formatMoney(v)}`,
+            render: (v) => `${baseCurrency.symbol}${format(v)}`,
         },
         {
             title: 'Savings',
@@ -162,7 +164,7 @@ const MonthlyHistory = ({ onNavigate }) => {
             render: (v) => {
                 const num = Number(v || 0);
                 const color = num < 0 ? '#cf1322' : '#3f8600';
-                return <span style={{ color }}>${formatMoney(num)}</span>;
+                return <span style={{ color }}>{baseCurrency.symbol}{format(num)}</span>;
             },
         },
     ];
@@ -204,11 +206,11 @@ const MonthlyHistory = ({ onNavigate }) => {
                     <div className="summary-stat-grid">
                         <div className="metric-card">
                             <div className="metric-name">Average Monthly Income</div>
-                            <div className="metric-value">${formatMoney(summaryStats.avgIncome)}</div>
+                            <div className="metric-value">{baseCurrency.symbol}{format(summaryStats.avgIncome)}</div>
                         </div>
                         <div className="metric-card">
                             <div className="metric-name">Average Monthly Expenses</div>
-                            <div className="metric-value">${formatMoney(summaryStats.avgExpenses)}</div>
+                            <div className="metric-value">{baseCurrency.symbol}{format(summaryStats.avgExpenses)}</div>
                         </div>
                         <div className="metric-card">
                             <div className="metric-name">
@@ -218,7 +220,7 @@ const MonthlyHistory = ({ onNavigate }) => {
                                 }
                             </div>
                             <div className="metric-value">
-                                {summaryStats.bestSavingsMonth ? `$${formatMoney(summaryStats.bestSavingsAmount)}` : '-'}
+                                {summaryStats.bestSavingsMonth ? `${baseCurrency.symbol}${format(summaryStats.bestSavingsAmount)}` : '-'}
                             </div>
                         </div>
                         <div className="metric-card">
@@ -292,8 +294,8 @@ const MonthlyHistory = ({ onNavigate }) => {
                             <ResponsiveContainer width="100%" height={300}>
                                 <LineChart data={chartData}>
                                     <XAxis dataKey="month" />
-                                    <YAxis tickFormatter={(v) => `$${v}`} />
-                                    <Tooltip formatter={(value, name) => [`$${formatMoney(value)}`, name]} />
+                                    <YAxis tickFormatter={(v) => `${baseCurrency.symbol}${v}`} />
+                                    <Tooltip formatter={(value, name) => [`${baseCurrency.symbol}${format(value)}`, name]} />
                                     <Legend verticalAlign="bottom" height={36} />
                                     
                                     {/* First transaction annotation */}

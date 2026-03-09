@@ -16,6 +16,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   VerifyEmailDto,
+  UpdateProfileDto,
 } from "./dto/create-auth.dto";
 import { EmailService } from "../email/email.service";
 import { RecurringService } from "../recurring/recurring.service";
@@ -105,6 +106,7 @@ export class AuthService {
         id: user.id,
         username: user.username,
         email: user.email,
+        baseCurrency: user.baseCurrency,
       },
     };
   }
@@ -179,6 +181,7 @@ export class AuthService {
         id: user.id,
         username: user.username,
         email: user.email,
+        baseCurrency: user.baseCurrency,
       },
     };
   }
@@ -293,7 +296,49 @@ export class AuthService {
     return {
       message: "Google login successful",
       access_token: token,
-      user: { id: user.id, username: user.username, email: user.email },
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        email: user.email,
+        baseCurrency: user.baseCurrency 
+      },
+    };
+  }
+
+  // ── Update Profile ─────────────────────────────────────────────
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    // Update allowed fields
+    if (dto.username !== undefined) {
+      // Check if username is already taken by another user
+      const existingUser = await this.userRepository.findOne({
+        where: { username: dto.username },
+      });
+      if (existingUser && existingUser.id !== userId) {
+        throw new BadRequestException("Username already taken");
+      }
+      user.username = dto.username;
+    }
+
+    if (dto.baseCurrency !== undefined) {
+      user.baseCurrency = dto.baseCurrency;
+    }
+
+    await this.userRepository.save(user);
+
+    return {
+      message: "Profile updated successfully",
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        baseCurrency: user.baseCurrency,
+        createdAt: user.createdAt,
+      },
     };
   }
 

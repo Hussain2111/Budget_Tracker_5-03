@@ -29,6 +29,12 @@ export class Expense {
   @Column({ nullable: true })
   description?: string;
 
+  @Column({ default: "USD" })
+  currency: string;
+
+  @Column('decimal', { precision: 10, scale: 4, default: 1.0 })
+  exchangeRate: number;
+
   // ── Recurring fields ──────────────────────────────────────────
   @Column({ default: false })
   isRecurring: boolean;

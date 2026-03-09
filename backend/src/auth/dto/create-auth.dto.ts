@@ -39,3 +39,13 @@ export class VerifyEmailDto {
   @IsString()
   token: string;
 }
+
+export class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
+  username?: string;
+
+  @IsOptional()
+  @IsString()
+  baseCurrency?: string;
+}

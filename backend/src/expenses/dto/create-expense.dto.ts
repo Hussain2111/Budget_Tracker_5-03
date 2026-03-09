@@ -35,4 +35,13 @@ export class CreateExpenseDto {
   @IsOptional()
   @IsIn(['monthly'])
   recurringFrequency?: string;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  exchangeRate?: number;
 }

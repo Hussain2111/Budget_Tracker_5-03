@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Body,
   Get,
   UseGuards,
@@ -15,6 +16,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   VerifyEmailDto,
+  UpdateProfileDto,
 } from "./dto/create-auth.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { AuthGuard } from "@nestjs/passport";
@@ -62,8 +64,15 @@ export class AuthController {
       id: user.id,
       username: user.username,
       email: user.email,
+      baseCurrency: user.baseCurrency,
       createdAt: user.createdAt,
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch("profile")
+  updateProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(req.user.id, dto);
   }
 
   @Get("google")

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button, DatePicker, Form, Input, InputNumber, Modal, Table, message, Progress, Card, Spin } from 'antd';
 import dayjs from 'dayjs';
 import { savingsService } from '../services/apiService';
+import { useCurrency } from '../CurrencyContext';
 
 function classifyGoal(goal) {
     const target = Number(goal.targetAmount || 0);
@@ -19,6 +20,7 @@ function classifyGoal(goal) {
 }
 
 const Savings = () => {
+    const { baseCurrency } = useCurrency();
     const [goals, setGoals] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -167,7 +169,7 @@ const Savings = () => {
             title: 'Target Amount',
             dataIndex: 'targetAmount',
             key: 'targetAmount',
-            render: (v) => `$${formatMoney(v)}`,
+            render: (v) => `${baseCurrency.symbol}${formatMoney(v)}`,
         },
         {
             title: 'Deadline',
@@ -192,8 +194,8 @@ const Savings = () => {
                 return (
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span>Saved: ${formatMoney(current)}</span>
-                            <span>Target: ${formatMoney(target)}</span>
+                            <span>Saved: {baseCurrency.symbol}{formatMoney(current)}</span>
+                            <span>Target: {baseCurrency.symbol}{formatMoney(target)}</span>
                         </div>
                         <Progress
                             percent={Number(percent.toFixed(0))}
@@ -205,7 +207,7 @@ const Savings = () => {
                         </div>
                         {!isComplete && monthsRemaining > 0 && (
                             <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-                                Monthly target: ${formatMoney(monthlyNeeded)}
+                                Monthly target: {baseCurrency.symbol}{formatMoney(monthlyNeeded)}
                             </div>
                         )}
                         {isComplete && (
@@ -259,11 +261,11 @@ const Savings = () => {
                         <div className="savings-grid">
                             <div>
                                 <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>Total Saved</div>
-                                <div style={{ fontSize: 20, fontWeight: 600 }}>${formatMoney(totalSaved)}</div>
+                                <div style={{ fontSize: 20, fontWeight: 600 }}>{baseCurrency.symbol}{formatMoney(totalSaved)}</div>
                             </div>
                             <div>
                                 <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>Total Target</div>
-                                <div style={{ fontSize: 20, fontWeight: 600 }}>${formatMoney(totalTarget)}</div>
+                                <div style={{ fontSize: 20, fontWeight: 600 }}>{baseCurrency.symbol}{formatMoney(totalTarget)}</div>
                             </div>
                             <div>
                                 <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>On Track</div>
@@ -322,7 +324,7 @@ const Savings = () => {
                         name="targetAmount"
                         rules={[{ required: true, message: 'Please enter a target amount' }]}
                     >
-                        <InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix="$" />
+                        <InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix={baseCurrency.symbol} />
                     </Form.Item>
 
                     <Form.Item
@@ -351,11 +353,11 @@ const Savings = () => {
                     <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                             <span>Current:</span>
-                            <span style={{ fontWeight: 600 }}>${formatMoney(contributingGoal.currentAmount || 0)}</span>
+                            <span style={{ fontWeight: 600 }}>{baseCurrency.symbol}{formatMoney(contributingGoal.currentAmount || 0)}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span>Target:</span>
-                            <span style={{ fontWeight: 600 }}>${formatMoney(contributingGoal.targetAmount || 0)}</span>
+                            <span style={{ fontWeight: 600 }}>{baseCurrency.symbol}{formatMoney(contributingGoal.targetAmount || 0)}</span>
                         </div>
                     </div>
                 )}
@@ -365,7 +367,7 @@ const Savings = () => {
                         name="amount"
                         rules={[{ required: true, message: 'Please enter an amount' }]}
                     >
-                        <InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix="$" />
+                        <InputNumber min={0} step={0.01} style={{ width: '100%' }} prefix={baseCurrency.symbol} />
                     </Form.Item>
 
                     <Form.Item label="Note (optional)" name="note">

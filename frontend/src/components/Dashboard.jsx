@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Spin, message, Table, Tag, DatePicker } from "antd";
 import { dashboardService, ledgerService } from "../services/apiService";
+import { useCurrency } from "../CurrencyContext";
 import dayjs from "dayjs";
 import { TrendCard } from "./dashboard/TrendCard";
 import { BudgetPaceCard } from "./dashboard/BudgetPaceCard";
@@ -170,6 +171,7 @@ function useDashboardData(selectedMonth) {
 }
 
 const Dashboard = ({ onNavigate }) => {
+    const { baseCurrency, currencies, convert, format } = useCurrency();
     const currentMonth = useMemo(() => dayjs(), []);
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
@@ -182,6 +184,11 @@ const Dashboard = ({ onNavigate }) => {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         });
+    };
+
+    // Helper to convert transaction amounts
+    const convertTransactionAmount = (amount, exchangeRate = 1.0) => {
+        return convert(Number(amount), Number(exchangeRate ?? 1.0));
     };
 
 
@@ -213,14 +220,25 @@ const Dashboard = ({ onNavigate }) => {
             key: "amount",
             width: 140,
             align: "right",
-            render: (amt) => {
-                const n = Number(amt);
-                const color = n < 0 ? "#cf1322" : "#3f8600";
-                const sign = n < 0 ? "-" : "+";
+            render: (amt, record) => {
+                const originalAmount = Number(amt);
+                const convertedAmount = convertTransactionAmount(amt, record.exchangeRate);
+                const currency = currencies[record.currency] || currencies.USD;
+                const isForeignCurrency = record.currency && record.currency !== baseCurrency.code;
+                const color = record.kind === "expense" ? "#cf1322" : "#3f8600";
+                const sign = record.kind === "expense" ? "-" : "+";
+                
                 return (
-                    <span style={{ color }}>
-            {sign}${formatMoney(Math.abs(n))}
-          </span>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ color, fontWeight: 600 }}>
+                            {sign}{currency.symbol}{formatMoney(Math.abs(originalAmount))}
+                        </div>
+                        {isForeignCurrency && (
+                            <div style={{ fontSize: 11, color: '#666' }}>
+                                ≈ {sign}{baseCurrency.symbol}{formatMoney(Math.abs(convertedAmount))}
+                            </div>
+                        )}
+                    </div>
                 );
             },
         },
@@ -244,14 +262,14 @@ const Dashboard = ({ onNavigate }) => {
                 <div className="metric-row">
                     <TrendCard
                         title="Total Income"
-                        value={formatMoney(data.monthly?.totalIncome)}
+                        value={format(convertTransactionAmount(data.monthly?.totalIncome))}
                         deltaPercent={data.momDelta?.incomeChangePercent}
                         color="#3f8600"
                         borderColor="#3f8600"
                     />
                     <TrendCard
                         title="Total Expenses"
-                        value={formatMoney(data.monthly?.totalExpenses)}
+                        value={format(convertTransactionAmount(data.monthly?.totalExpenses))}
                         deltaPercent={data.momDelta?.expenseChangePercent}
                         color="#cf1322"
                         borderColor="#cf1322"
@@ -259,7 +277,7 @@ const Dashboard = ({ onNavigate }) => {
                     />
                     <TrendCard
                         title="Net Savings"
-                        value={formatMoney(data.monthly?.monthlySavings)}
+                        value={format(convertTransactionAmount(data.monthly?.monthlySavings))}
                         deltaPercent={data.momDelta?.savingsChangePercent}
                         color="#6366f1"
                         borderColor="#6366f1"
@@ -322,7 +340,7 @@ const Dashboard = ({ onNavigate }) => {
                                         </div>
                                     </div>
                                     <div className="category-amount">
-                                        ${formatMoney(category.amount)}
+                                        {format(convertTransactionAmount(category.amount))}
                                     </div>
                                 </div>
                             ))}
