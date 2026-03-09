@@ -50,7 +50,7 @@ export class AuthService {
       username,
       email,
       password: hashedPassword,
-      isEmailVerified: false,
+      isEmailVerified: true,
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
     });
