@@ -25,7 +25,7 @@ const Login = ({ onLoginSuccess, onSwitchToRegister }) => {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:3001/auth/google";
+   window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
   };
 
   return (
@@ -52,13 +52,13 @@ const Login = ({ onLoginSuccess, onSwitchToRegister }) => {
 
           <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
             <Form.Item
-                label="Username"
-                name="username"
-                rules={[{ required: true, message: "Please enter username" }]}
+                label="Username or Email"
+                name="usernameOrEmail"
+                rules={[{ required: true, message: "Please enter username or email" }]}
             >
               <Input
                   prefix={<UserOutlined />}
-                  placeholder="Enter your username"
+                  placeholder="Enter your username or email"
                   size="large"
               />
             </Form.Item>
