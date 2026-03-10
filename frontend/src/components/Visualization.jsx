@@ -221,7 +221,7 @@ const expensePieConfig = {
     color: EXPENSE_COLORS,
     legend: { position: "bottom" },
     label: {
-        type: "inner",
+        type: "spider",
         offset: "-30%",
         content: ({ percent }) => `${(percent * 100).toFixed(0)}%`,
         style: { fontSize: 12, textAlign: "center" },
@@ -251,7 +251,7 @@ const incomePieConfig = {
     color: INCOME_COLORS,
     legend: { position: "bottom" },
     label: {
-        type: "inner",
+        type: "spider",
         offset: "-30%",
         content: ({ percent }) => `${(percent * 100).toFixed(0)}%`,
         style: { fontSize: 12, textAlign: "center" },
@@ -280,7 +280,7 @@ const incomePieConfig = {
             },
         },
         label: {
-            position: 'middle',
+            position: 'center',
             formatter: (datum) => `${baseCurrency.symbol}${format(datum.value)}`,
         },
     };
